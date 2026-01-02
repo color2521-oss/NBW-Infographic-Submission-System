@@ -109,6 +109,7 @@ export const getAnnouncements = async (): Promise<Announcement[]> => {
 };
 
 export const addAnnouncement = async (announcement: Announcement): Promise<void> => {
+  // Matches Schema: ['title', 'date', 'content', 'imageUrl', 'id', 'isPinned']
   const safeAnn = { 
     title: announcement.title,
     date: announcement.date,
@@ -121,6 +122,7 @@ export const addAnnouncement = async (announcement: Announcement): Promise<void>
 };
 
 export const updateAnnouncement = async (announcement: Announcement): Promise<void> => {
+  // Matches Schema: ['title', 'date', 'content', 'imageUrl', 'id', 'isPinned']
   const safeAnn = { 
     title: announcement.title,
     date: announcement.date,
