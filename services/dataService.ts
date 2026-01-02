@@ -15,7 +15,6 @@ export const generateUUID = (): string => {
 
 const apiCall = async (action: string, payload: any = {}): Promise<any> => {
   try {
-    // console.log(`Calling ${action} with payload:`, payload); 
     const response = await fetch(API_URL, {
       redirect: "follow",
       method: "POST",
@@ -39,7 +38,6 @@ export const getStudents = async (room?: string): Promise<Student[]> => {
 };
 
 export const registerStudent = async (student: Student): Promise<void> => {
-  // STRICT ORDER: studentId (Col A), name (Col B), number (Col C), room (Col D), id (Col E)
   const safeStudent = {
     studentId: student.studentId, 
     name: student.name,
@@ -59,29 +57,20 @@ export const getAssignments = async (): Promise<Assignment[]> => {
   try {
     const fetchedAssignments = await apiCall('getAssignments');
     const safeFetched = Array.isArray(fetchedAssignments) ? fetchedAssignments : [];
-
-    // Merge strategy: Use fetched data to override initial data
-    // This fixes the bug where assignments 2-6 disappear if only assignment 1 exists in the Sheet
     const merged = INITIAL_ASSIGNMENTS.map(init => {
       const found = safeFetched.find((f: Assignment) => f.id === init.id);
       return found ? { ...init, ...found } : init;
     });
-
-    // Include any new assignments created dynamically (if any)
     const extras = safeFetched.filter((f: Assignment) => 
       !INITIAL_ASSIGNMENTS.some(i => i.id === f.id)
     );
-
     return [...merged, ...extras].sort((a, b) => a.order - b.order);
   } catch (error) {
-    console.error("Error getting assignments, falling back to initial", error);
     return INITIAL_ASSIGNMENTS;
   }
 };
 
 export const updateAssignment = async (assignment: Assignment): Promise<void> => {
-  // Ensure strict field order for Sheet consistency
-  // order: id, title, maxScore, term, order
   const safeAssign = {
     id: assignment.id,
     title: assignment.title,
@@ -92,22 +81,17 @@ export const updateAssignment = async (assignment: Assignment): Promise<void> =>
   await apiCall('updateAssignment', safeAssign);
 };
 
-export const deleteAssignment = async (id: string): Promise<void> => {
-  await apiCall('deleteAssignment', { id });
-};
-
 // --- Submissions ---
 export const getSubmissions = async (room?: string): Promise<Submission[]> => {
   return await apiCall('getSubmissions', { room });
 };
 
 export const submitAssignment = async (submission: Submission, room: string): Promise<void> => {
-  // STRICT ORDER: studentId, assignmentId, score, imageUrl, submittedAt, id
   const safeSubmission = {
       studentId: submission.studentId,
       assignmentId: submission.assignmentId,
       score: submission.score,
-      imageUrl: submission.imageUrl || '', // Handle null/undefined
+      imageUrl: submission.imageUrl || '', 
       submittedAt: submission.submittedAt,
       id: submission.id || generateUUID(),
       room: room
@@ -125,7 +109,6 @@ export const getAnnouncements = async (): Promise<Announcement[]> => {
 };
 
 export const addAnnouncement = async (announcement: Announcement): Promise<void> => {
-  // STRICT ORDER: title, date, content, imageUrl, id, isPinned
   const safeAnn = { 
     title: announcement.title,
     date: announcement.date,
