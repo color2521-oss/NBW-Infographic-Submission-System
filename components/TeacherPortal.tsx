@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { 
-  Users, FileEdit, BarChart2, CheckSquare, Save, Trash2, Edit2, Plus, X, Bell, Image as ImageIcon, Pin, FileSpreadsheet, Copy, Maximize2
+  Users, FileEdit, BarChart2, CheckSquare, Save, Trash2, Edit2, Plus, X, Bell, Image as ImageIcon, Pin, FileSpreadsheet, Copy, Maximize2, UserCog, Hash, GraduationCap
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as DataService from '../services/dataService';
-import { Student, Assignment, Submission, ROOMS, Announcement } from '../types';
+import { Student, Assignment, Submission, ROOMS, NUMBERS, Announcement } from '../types';
 
 export const TeacherPortal: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -194,45 +194,172 @@ const StudentManager: React.FC = () => {
 
   const handleEdit = async (student: Student) => {
     const { value: formValues } = await Swal.fire({
-      title: 'แก้ไขข้อมูลนักเรียน',
-      html: `<input id="swal-name" class="swal2-input" value="${student.name}"><input id="swal-number" class="swal2-input" type="number" value="${student.number}">`,
-      preConfirm: () => ({ name: (document.getElementById('swal-name') as HTMLInputElement).value, number: Number((document.getElementById('swal-number') as HTMLInputElement).value) })
+      title: `
+        <div class="flex items-center justify-center gap-2 text-nbw-600">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-cog"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="m19 8 3 3-3 3"/><path d="m15 8-3 3 3 3"/></svg>
+          <span class="text-xl font-bold">แก้ไขข้อมูลนักเรียน</span>
+        </div>
+      `,
+      html: `
+        <div class="text-left space-y-4 px-2 mt-4">
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">รหัสประจำตัว (5 หลัก)</label>
+            <input id="swal-studentId" maxLength="5" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-nbw-500 focus:outline-none transition-all text-gray-800 font-medium" value="${student.studentId}" placeholder="ระบุเลข 5 หลัก">
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">ชื่อ-นามสกุล</label>
+            <input id="swal-name" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-nbw-500 focus:outline-none transition-all text-gray-800 font-medium" value="${student.name}" placeholder="ชื่อ นามสกุล">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">ชั้นเรียน</label>
+              <select id="swal-room" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-nbw-500 focus:outline-none transition-all text-gray-800 font-medium">
+                ${ROOMS.map(r => `<option value="${r}" ${r === student.room ? 'selected' : ''}>${r}</option>`).join('')}
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">เลขที่</label>
+              <select id="swal-number" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-nbw-500 focus:outline-none transition-all text-gray-800 font-medium">
+                ${NUMBERS.map(n => `<option value="${n}" ${n === student.number ? 'selected' : ''}>${n}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+        </div>
+      `,
+      customClass: {
+        popup: 'rounded-3xl border-t-8 border-nbw-500 shadow-2xl p-6',
+        confirmButton: 'bg-nbw-600 hover:bg-nbw-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg transform hover:-translate-y-0.5',
+        cancelButton: 'bg-gray-100 hover:bg-gray-200 text-gray-500 px-8 py-3 rounded-xl font-bold transition-all ml-3'
+      },
+      buttonsStyling: false,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'บันทึกข้อมูล',
+      cancelButtonText: 'ยกเลิก',
+      preConfirm: () => {
+        const studentId = (document.getElementById('swal-studentId') as HTMLInputElement).value;
+        const name = (document.getElementById('swal-name') as HTMLInputElement).value;
+        const room = (document.getElementById('swal-room') as HTMLSelectElement).value;
+        const number = (document.getElementById('swal-number') as HTMLSelectElement).value;
+        
+        if (!studentId.trim() || studentId.length !== 5) {
+          Swal.showValidationMessage('กรุณากรอกรหัสนักเรียนให้ครบ 5 หลัก');
+          return false;
+        }
+        if (!name.trim()) {
+          Swal.showValidationMessage('กรุณากรอกชื่อ-นามสกุล');
+          return false;
+        }
+        return { studentId, name: name.trim(), room, number: Number(number) };
+      }
     });
+
     if (formValues) {
-      await DataService.registerStudent({ ...student, ...formValues });
-      fetchStudents();
-      Swal.fire('สำเร็จ', 'แก้ไขเรียบร้อย', 'success');
+      try {
+        Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+        // If the room changed, we need to handle that on the backend. 
+        // Our service currently uses studentId as the key.
+        await DataService.registerStudent({ ...student, ...formValues });
+        await fetchStudents();
+        Swal.fire({
+          icon: 'success',
+          title: 'สำเร็จ',
+          text: 'อัปเดตข้อมูลนักเรียนเรียบร้อยแล้ว',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } catch (err) {
+        Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+      }
     }
   };
 
   const handleDelete = (id: string) => {
-    Swal.fire({ title: 'ลบข้อมูล?', icon: 'warning', showCancelButton: true }).then(async (r) => {
-      if (r.isConfirmed) { await DataService.deleteStudent(id, filterRoom); fetchStudents(); }
+    Swal.fire({ 
+      title: 'ลบข้อมูลนักเรียน?', 
+      text: 'ข้อมูลการส่งงานและคะแนนของนักเรียนคนนี้จะถูกลบออกด้วย',
+      icon: 'warning', 
+      showCancelButton: true,
+      confirmButtonText: 'ใช่, ลบเลย',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#ef4444'
+    }).then(async (r) => {
+      if (r.isConfirmed) { 
+        Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading() });
+        await DataService.deleteStudent(id, filterRoom); 
+        fetchStudents(); 
+        Swal.fire('สำเร็จ', 'ลบข้อมูลเรียบร้อยแล้ว', 'success');
+      }
     });
   };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold">จัดการข้อมูลนักเรียน</h3>
-        <select value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)} className="border rounded-lg px-3 py-2">
-          {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+           <Users className="text-nbw-600" /> จัดการข้อมูลนักเรียน
+        </h3>
+        <div className="flex gap-2 w-full md:w-auto">
+          <select value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)} className="border rounded-lg px-4 py-2 bg-gray-50 text-gray-700 font-medium focus:ring-2 focus:ring-nbw-500 outline-none flex-grow md:flex-grow-0">
+            {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <button onClick={fetchStudents} className="p-2 bg-nbw-50 text-nbw-600 rounded-lg hover:bg-nbw-100 transition-colors" title="รีเฟรช">
+             {/* Fix: changed class to className and hyphenated attributes to camelCase in JSX SVG */}
+             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+          </button>
+        </div>
       </div>
-      <table className="w-full text-sm text-left">
-        <thead className="bg-gray-100"><tr><th className="p-4">เลขที่</th><th className="p-4">ชื่อ-สกุล</th><th className="p-4 text-right">จัดการ</th></tr></thead>
-        <tbody>
-          {students.sort((a,b)=>a.number-b.number).map(s => (
-            <tr key={s.id} className="border-b">
-              <td className="p-4">{s.number}</td><td className="p-4">{s.name}</td>
-              <td className="p-4 text-right flex justify-end gap-2">
-                <button onClick={() => handleEdit(s)} className="text-blue-500"><Edit2 size={16}/></button>
-                <button onClick={() => handleDelete(s.studentId)} className="text-red-500"><Trash2 size={16}/></button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      {loading ? (
+        <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-nbw-500 mx-auto"></div>
+          <p className="text-gray-400 mt-2">กำลังโหลดข้อมูลนักเรียน...</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto border rounded-2xl shadow-sm bg-white overflow-hidden">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="p-4 w-16 text-center font-bold text-gray-500">เลขที่</th>
+                <th className="p-4 w-32 font-bold text-gray-500">รหัสประจำตัว</th>
+                <th className="p-4 font-bold text-gray-500">ชื่อ-นามสกุล</th>
+                <th className="p-4 w-24 text-center font-bold text-gray-500">ห้อง</th>
+                <th className="p-4 w-32 text-right font-bold text-gray-500">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {students.length === 0 ? (
+                <tr><td colSpan={5} className="p-10 text-center text-gray-400">ยังไม่มีข้อมูลนักเรียนในห้องนี้</td></tr>
+              ) : students.sort((a,b)=>a.number-b.number).map(s => (
+                <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
+                  <td className="p-4 text-center font-bold text-nbw-600">{s.number}</td>
+                  <td className="p-4 font-mono text-gray-600">{s.studentId}</td>
+                  <td className="p-4 font-semibold text-gray-800">{s.name}</td>
+                  <td className="p-4 text-center">
+                    <span className="px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-500 font-bold">{s.room}</span>
+                  </td>
+                  <td className="p-4 text-right flex justify-end gap-1">
+                    <button 
+                      onClick={() => handleEdit(s)} 
+                      className="p-2 text-gray-400 hover:text-nbw-600 hover:bg-nbw-50 rounded-xl transition-all"
+                      title="แก้ไขข้อมูล"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(s.studentId)} 
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                      title="ลบนักเรียน"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
