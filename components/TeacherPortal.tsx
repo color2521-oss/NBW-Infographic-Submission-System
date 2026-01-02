@@ -238,16 +238,102 @@ const StudentManager: React.FC = () => {
 
 const AssignmentManager: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  useEffect(() => { DataService.getAssignments().then(setAssignments); }, []);
+  const [loading, setLoading] = useState(false);
+
+  const fetchAssignments = async () => {
+    setLoading(true);
+    try {
+      const data = await DataService.getAssignments();
+      setAssignments(data);
+    } catch (error) {
+      Swal.fire('Error', 'ไม่สามารถโหลดข้อมูลภาระงานได้', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchAssignments(); }, []);
+
+  const handleEdit = async (assign: Assignment) => {
+    const { value: formValues } = await Swal.fire({
+      title: 'แก้ไขข้อมูลภาระงาน',
+      html: `
+        <div class="text-left mb-1 font-bold text-gray-700">ชื่อภาระงาน:</div>
+        <input id="swal-title" class="swal2-input w-full mb-4" style="margin-top: 0;" value="${assign.title}" placeholder="ชื่อภาระงาน">
+        <div class="text-left mb-1 font-bold text-gray-700">คะแนนเต็ม:</div>
+        <input id="swal-score" type="number" class="swal2-input w-full" style="margin-top: 0;" value="${assign.maxScore}" placeholder="คะแนนเต็ม">
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'บันทึก',
+      cancelButtonText: 'ยกเลิก',
+      preConfirm: () => {
+        const title = (document.getElementById('swal-title') as HTMLInputElement).value;
+        const score = (document.getElementById('swal-score') as HTMLInputElement).value;
+        if (!title || !score) {
+          Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
+          return false;
+        }
+        return { title, maxScore: Number(score) };
+      }
+    });
+
+    if (formValues) {
+      try {
+        Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+        await DataService.updateAssignment({ ...assign, ...formValues });
+        await fetchAssignments();
+        Swal.fire('สำเร็จ', 'แก้ไขข้อมูลเรียบร้อยแล้ว', 'success');
+      } catch (err) {
+        Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+      }
+    }
+  };
+
   return (
     <div>
-      <h3 className="text-xl font-bold mb-6">จัดการงาน</h3>
-      <div className="space-y-2">
-        {assignments.map(a => (
-          <div key={a.id} className="p-4 border rounded-lg flex justify-between">
-            <span>{a.title} ({a.maxScore} คะแนน)</span>
-          </div>
-        ))}
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <FileEdit className="text-nbw-600" /> จัดการภาระงาน
+        </h3>
+        <button onClick={fetchAssignments} className="text-sm text-nbw-600 hover:underline">รีเฟรชข้อมูล</button>
+      </div>
+      
+      {loading ? (
+        <div className="text-center py-10">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nbw-500 mx-auto"></div>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {assignments.map(a => (
+            <div key={a.id} className="p-4 border border-gray-100 rounded-2xl flex justify-between items-center bg-gray-50/50 hover:bg-white hover:shadow-md transition-all group">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-nbw-100 flex items-center justify-center text-nbw-600 font-bold">
+                  {a.order}
+                </div>
+                <div>
+                  <div className="font-bold text-gray-800 group-hover:text-nbw-600 transition-colors">{a.title}</div>
+                  <div className="text-sm text-gray-500">
+                    คะแนนเต็ม: <span className="font-bold text-nbw-600">{a.maxScore}</span> 
+                    <span className="mx-2">|</span>
+                    {a.term === 'pre-midterm' ? 'ก่อนกลางภาค' : 'หลังกลางภาค'}
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => handleEdit(a)} 
+                className="p-2 text-gray-400 hover:text-nbw-600 hover:bg-nbw-50 rounded-xl transition-all"
+                title="แก้ไขภาระงาน"
+              >
+                <Edit2 size={20} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-8 p-4 bg-blue-50 rounded-xl text-blue-700 text-sm">
+        <p className="font-bold mb-1">คำแนะนำ:</p>
+        <p>การแก้ไขชื่อภาระงานหรือคะแนนเต็มจะส่งผลต่อการแสดงผลในหน้าสรุปคะแนนและหน้านักเรียนทันที ข้อมูลจะถูกบันทึกลงในชีท Assignments โดยใช้ ID ของงานเป็นตัวอ้างอิง</p>
       </div>
     </div>
   );
