@@ -39,7 +39,7 @@ export const TeacherPortal: React.FC = () => {
           <form onSubmit={checkLogin} className="space-y-4">
             <input
               type="password"
-              placeholder="รหัสผ่าน (12345)"
+              placeholder="รหัสผ่าน"
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -53,7 +53,6 @@ export const TeacherPortal: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto p-4">
-      {/* Teacher Navigation */}
       <div className="flex flex-wrap gap-2 mb-8 bg-white p-2 rounded-xl shadow-sm border overflow-x-auto">
          {[
            { id: 'dashboard', label: 'ภาพรวม', icon: BarChart2 },
@@ -89,8 +88,6 @@ export const TeacherPortal: React.FC = () => {
   );
 };
 
-// --- Sub-components for Teacher Portal ---
-
 const ScoreSummary: React.FC = () => {
   const [room, setRoom] = useState(ROOMS[0]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -106,7 +103,6 @@ const ScoreSummary: React.FC = () => {
           DataService.getAssignments(),
           DataService.getSubmissions(room)
       ]);
-      
       setStudents(allStudents.sort((a,b) => a.number - b.number));
       setAssignments(allAssigns);
       setSubmissions(allSubs);
@@ -118,123 +114,65 @@ const ScoreSummary: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [room]);
+  useEffect(() => { fetchData(); }, [room]);
 
   const copyColumnScores = (assignmentId: string, title: string) => {
-    // Get scores sorted by student number (same as table display)
     const scoresToCopy = students.map(std => {
       const sub = submissions.find(s => s.studentId === std.studentId && s.assignmentId === assignmentId);
       return sub?.score !== null && sub?.score !== undefined ? sub.score : ''; 
     });
-
     const textToCopy = scoresToCopy.join('\n');
     navigator.clipboard.writeText(textToCopy).then(() => {
-      const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 2000,
-        timerProgressBar: true,
-      });
-      Toast.fire({
-        icon: 'success',
-        title: `คัดลอกคะแนน "${title}" เรียบร้อย`
-      });
+      Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, icon: 'success', title: `คัดลอกคะแนน "${title}" เรียบร้อย` });
     });
   };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileSpreadsheet className="text-green-600" /> สรุปคะแนนรายห้อง
-        </h3>
-        <select 
-          value={room} 
-          onChange={(e) => setRoom(e.target.value)}
-          className="border border-gray-300 rounded-lg px-4 py-2 bg-gray-50 text-gray-700 font-medium focus:ring-2 focus:ring-green-500 outline-none shadow-sm"
-        >
+        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><FileSpreadsheet className="text-green-600" /> สรุปคะแนนรายห้อง</h3>
+        <select value={room} onChange={(e) => setRoom(e.target.value)} className="border border-gray-300 rounded-lg px-4 py-2 bg-gray-50 text-gray-700 font-medium focus:ring-2 focus:ring-green-500 outline-none">
           {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
-
-      {loading ? (
-        <div className="text-center py-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-            <p className="text-gray-500 mt-2">กำลังประมวลผล...</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto border rounded-xl shadow-sm">
+      {loading ? ( <div className="text-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div></div> ) : (
+        <div className="overflow-x-auto border rounded-xl">
           <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100">
               <tr>
-                <th className="px-4 py-4 bg-gray-200 w-16 text-center border-b border-gray-300">เลขที่</th>
-                <th className="px-4 py-4 bg-gray-200 w-48 border-b border-gray-300">ชื่อ-สกุล</th>
+                <th className="px-4 py-4 w-16 text-center border-b">เลขที่</th>
+                <th className="px-4 py-4 w-48 border-b">ชื่อ-สกุล</th>
                 {assignments.map(a => (
-                  <th key={a.id} className="px-2 py-2 bg-gray-50 min-w-[120px] text-center border-l border-b border-gray-200 relative group">
-                    <div className="flex flex-col items-center justify-center gap-1">
-                      <span className="truncate w-full font-bold text-gray-700" title={a.title}>{a.title}</span>
-                      <span className="text-[10px] text-gray-400">({a.maxScore} คะแนน)</span>
-                      <button 
-                        onClick={() => copyColumnScores(a.id, a.title)}
-                        className="mt-1 flex items-center gap-1 bg-white border border-gray-300 hover:bg-green-50 hover:text-green-600 hover:border-green-300 px-2 py-0.5 rounded text-xs transition-all shadow-sm active:scale-95"
-                        title="คัดลอกคะแนนทั้งคอลัมน์"
-                      >
-                        <Copy size={12} /> Copy
-                      </button>
+                  <th key={a.id} className="px-2 py-2 text-center border-l border-b min-w-[120px]">
+                    <div className="flex flex-col items-center">
+                      <span className="truncate w-full font-bold">{a.title}</span>
+                      <button onClick={() => copyColumnScores(a.id, a.title)} className="mt-1 bg-white border px-2 py-0.5 rounded text-xs hover:bg-green-50">Copy</button>
                     </div>
                   </th>
                 ))}
-                <th className="px-4 py-4 bg-gray-200 w-24 text-center border-l border-b border-gray-300 font-bold text-gray-800">รวมคะแนน</th>
+                <th className="px-4 py-4 w-24 text-center border-l border-b font-bold">รวม</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {students.length > 0 ? (
-                students.map((std) => {
-                  let totalScore = 0;
-                  return (
-                    <tr key={std.id} className="bg-white hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-center text-gray-900 bg-gray-50/50">{std.number}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{std.name}</td>
-                      {assignments.map(assign => {
-                        const sub = submissions.find(s => s.studentId === std.studentId && s.assignmentId === assign.id);
-                        const score = sub?.score;
-                        if (typeof score === 'number') totalScore += score;
-                        
-                        return (
-                          <td key={assign.id} className="px-2 py-3 text-center border-l border-gray-100">
-                             {score !== null && score !== undefined ? (
-                               <span className={`font-medium ${score >= (assign.maxScore / 2) ? 'text-green-600' : 'text-red-500'}`}>
-                                 {score}
-                               </span>
-                             ) : (
-                               <span className="text-gray-300">-</span>
-                             )}
-                          </td>
-                        );
-                      })}
-                      <td className="px-4 py-3 text-center border-l border-gray-200 bg-gray-50 font-bold text-blue-700">
-                        {totalScore}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={assignments.length + 3} className="px-6 py-10 text-center text-gray-400">
-                    ไม่พบข้อมูลนักเรียนในห้อง {room}
-                  </td>
-                </tr>
-              )}
+            <tbody>
+              {students.map((std) => {
+                let total = 0;
+                return (
+                  <tr key={std.id} className="bg-white border-b hover:bg-gray-50">
+                    <td className="px-4 py-3 text-center">{std.number}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">{std.name}</td>
+                    {assignments.map(assign => {
+                      const sub = submissions.find(s => s.studentId === std.studentId && s.assignmentId === assign.id);
+                      if (typeof sub?.score === 'number') total += sub.score;
+                      return <td key={assign.id} className="px-2 py-3 text-center border-l">{sub?.score ?? '-'}</td>;
+                    })}
+                    <td className="px-4 py-3 text-center border-l font-bold text-blue-700">{total}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
-      <div className="mt-4 text-xs text-gray-400 text-right">
-        * ปุ่ม Copy จะคัดลอกคะแนนทั้งหมดในคอลัมน์นั้น (เรียงตามเลขที่) เพื่อนำไปวางใน Excel/Sheets
-      </div>
     </div>
   );
 };
@@ -251,174 +189,66 @@ const StudentManager: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchStudents();
-  }, [filterRoom]);
-
-  const handleDelete = (id: string) => {
-    Swal.fire({
-      title: 'ยืนยันการลบ?',
-      text: "การกระทำนี้ไม่สามารถเรียกคืนได้",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'ลบข้อมูล',
-      cancelButtonText: 'ยกเลิก',
-      confirmButtonColor: '#d33',
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        Swal.fire({title: 'กำลังลบ...', didOpen: () => Swal.showLoading()});
-        await DataService.deleteStudent(id, filterRoom);
-        await fetchStudents();
-        Swal.fire('ลบแล้ว!', 'ข้อมูลถูกลบเรียบร้อย', 'success');
-      }
-    });
-  };
+  useEffect(() => { fetchStudents(); }, [filterRoom]);
 
   const handleEdit = async (student: Student) => {
     const { value: formValues } = await Swal.fire({
       title: 'แก้ไขข้อมูลนักเรียน',
-      html: `
-        <div class="text-left mb-2 space-y-3 p-2">
-            <div>
-                <label class="text-sm text-gray-600 font-medium">ชื่อ-สกุล</label>
-                <input id="swal-name" class="swal2-input w-full m-0 h-10 px-3 border rounded text-base" placeholder="ชื่อ-สกุล" value="${student.name}">
-            </div>
-            <div>
-                <label class="text-sm text-gray-600 font-medium">เลขที่</label>
-                <input id="swal-number" class="swal2-input w-full m-0 h-10 px-3 border rounded text-base" type="number" placeholder="เลขที่" value="${student.number}">
-            </div>
-            <div>
-                <label class="text-sm text-gray-600 font-medium">ห้อง</label>
-                <select id="swal-room" class="swal2-input w-full m-0 h-10 px-3 border rounded text-base">
-                    ${ROOMS.map(r => `<option value="${r}" ${r === student.room ? 'selected' : ''}>${r}</option>`).join('')}
-                </select>
-            </div>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'บันทึกการแก้ไข',
-      cancelButtonText: 'ยกเลิก',
-      confirmButtonColor: '#3b82f6',
-      preConfirm: () => {
-        const name = (document.getElementById('swal-name') as HTMLInputElement).value;
-        const number = (document.getElementById('swal-number') as HTMLInputElement).value;
-        const room = (document.getElementById('swal-room') as HTMLSelectElement).value;
-        if (!name || !number || !room) {
-          Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบ');
-          return null;
-        }
-        return { name, number: Number(number), room };
-      }
+      html: `<input id="swal-name" class="swal2-input" value="${student.name}"><input id="swal-number" class="swal2-input" type="number" value="${student.number}">`,
+      preConfirm: () => ({ name: (document.getElementById('swal-name') as HTMLInputElement).value, number: Number((document.getElementById('swal-number') as HTMLInputElement).value) })
     });
-
     if (formValues) {
-      Swal.fire({title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading()});
-      if (formValues.room !== student.room) {
-          await DataService.deleteStudent(student.studentId, student.room);
-          await DataService.registerStudent({ ...student, ...formValues });
-      } else {
-          await DataService.registerStudent({ ...student, ...formValues });
-      }
-      await fetchStudents();
-      Swal.fire({ icon: 'success', title: 'แก้ไขเรียบร้อย', showConfirmButton: false, timer: 1500 });
+      await DataService.registerStudent({ ...student, ...formValues });
+      fetchStudents();
+      Swal.fire('สำเร็จ', 'แก้ไขเรียบร้อย', 'success');
     }
+  };
+
+  const handleDelete = (id: string) => {
+    Swal.fire({ title: 'ลบข้อมูล?', icon: 'warning', showCancelButton: true }).then(async (r) => {
+      if (r.isConfirmed) { await DataService.deleteStudent(id, filterRoom); fetchStudents(); }
+    });
   };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-800">จัดการข้อมูลนักเรียน</h3>
-        <select 
-          value={filterRoom} 
-          onChange={(e) => setFilterRoom(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-700 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-        >
+        <h3 className="text-xl font-bold">จัดการข้อมูลนักเรียน</h3>
+        <select value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)} className="border rounded-lg px-3 py-2">
           {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </div>
-      {loading ? (
-        <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500 mx-auto"></div>
-            <p className="text-gray-500 mt-2">กำลังโหลดข้อมูล...</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-100">
-              <tr>
-                <th className="px-6 py-3">เลขประจำตัว</th>
-                <th className="px-6 py-3">เลขที่</th>
-                <th className="px-6 py-3">ชื่อ-สกุล</th>
-                <th className="px-6 py-3 text-right">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.length > 0 ? (
-                students.sort((a,b) => a.number - b.number).map((student) => (
-                  <tr key={student.id} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{student.studentId}</td>
-                    <td className="px-6 py-4">{student.number}</td>
-                    <td className="px-6 py-4">{student.name}</td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                          <button onClick={() => handleEdit(student)} className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors"><Edit2 size={16} /> แก้ไข</button>
-                          <button onClick={() => handleDelete(student.studentId)} className="text-red-500 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"><Trash2 size={16} /> ลบ</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr><td colSpan={4} className="px-6 py-8 text-center text-gray-400">ไม่มีข้อมูลนักเรียนในห้องนี้</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <table className="w-full text-sm text-left">
+        <thead className="bg-gray-100"><tr><th className="p-4">เลขที่</th><th className="p-4">ชื่อ-สกุล</th><th className="p-4 text-right">จัดการ</th></tr></thead>
+        <tbody>
+          {students.sort((a,b)=>a.number-b.number).map(s => (
+            <tr key={s.id} className="border-b">
+              <td className="p-4">{s.number}</td><td className="p-4">{s.name}</td>
+              <td className="p-4 text-right flex justify-end gap-2">
+                <button onClick={() => handleEdit(s)} className="text-blue-500"><Edit2 size={16}/></button>
+                <button onClick={() => handleDelete(s.studentId)} className="text-red-500"><Trash2 size={16}/></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };
 
 const AssignmentManager: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const fetchAssignments = async () => {
-    setLoading(true);
-    const data = await DataService.getAssignments();
-    setAssignments(data);
-    setLoading(false);
-  }
-  useEffect(() => { fetchAssignments(); }, []);
-  const handleEditTitle = async (assign: Assignment) => {
-    const { value: newTitle } = await Swal.fire({
-      title: 'แก้ไขชื่องาน', input: 'text', inputValue: assign.title, showCancelButton: true,
-      inputValidator: (value) => !value ? 'กรุณาใส่ชื่อ' : null
-    });
-    if (newTitle) {
-      Swal.fire({title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading()});
-      await DataService.updateAssignment({ ...assign, title: newTitle });
-      await fetchAssignments();
-      Swal.fire('สำเร็จ', 'แก้ไขเรียบร้อย', 'success');
-    }
-  };
+  useEffect(() => { DataService.getAssignments().then(setAssignments); }, []);
   return (
     <div>
-      <h3 className="text-xl font-bold text-gray-800 mb-6">จัดการงานที่มอบหมาย</h3>
-      {loading ? ( <div className="text-center py-4">กำลังโหลด...</div> ) : (
-        <div className="space-y-4">
-            {assignments.map(assign => (
-            <div key={assign.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-md transition bg-gray-50">
-                <div>
-                  <div className="font-bold text-gray-800">{assign.title}</div>
-                  <div className="text-xs text-gray-500 uppercase mt-1">{assign.term === 'pre-midterm' ? 'ก่อนกลางภาค' : 'หลังกลางภาค'} • {assign.maxScore} คะแนน</div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEditTitle(assign)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition"><Edit2 size={18} /></button>
-                </div>
-            </div>
-            ))}
-        </div>
-      )}
+      <h3 className="text-xl font-bold mb-6">จัดการงาน</h3>
+      <div className="space-y-2">
+        {assignments.map(a => (
+          <div key={a.id} className="p-4 border rounded-lg flex justify-between">
+            <span>{a.title} ({a.maxScore} คะแนน)</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -428,95 +258,58 @@ const GradingSystem: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [loading, setLoading] = useState(false);
   const [tempScores, setTempScores] = useState<Record<string, number>>({});
+  
   const fetchData = async () => {
-    setLoading(true);
-    const [allStudents, allAssigns, allSubs] = await Promise.all([
-        DataService.getStudents(room), DataService.getAssignments(), DataService.getSubmissions(room)
-    ]);
-    setStudents(allStudents.sort((a,b) => a.number - b.number));
-    setAssignments(allAssigns);
-    setSubmissions(allSubs);
-    setTempScores({});
-    setLoading(false);
+    const [s, a, sub] = await Promise.all([DataService.getStudents(room), DataService.getAssignments(), DataService.getSubmissions(room)]);
+    setStudents(s.sort((a,b)=>a.number-b.number)); setAssignments(a); setSubmissions(sub);
   };
   useEffect(() => { fetchData(); }, [room]);
-  const handleScoreChange = (submissionKey: string, val: string, max: number) => {
-    let num = parseFloat(val);
-    if (isNaN(num)) return;
-    if (num < 0) num = 0; if (num > max) num = max;
-    setTempScores(prev => ({ ...prev, [submissionKey]: num }));
+
+  const save = async () => {
+    Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+    await Promise.all(Object.entries(tempScores).map(([k, v]) => {
+      const [sid, aid] = k.split('::');
+      return DataService.gradeSubmission(sid, aid, v, room);
+    }));
+    fetchData(); setTempScores({}); Swal.fire('สำเร็จ', 'บันทึกแล้ว', 'success');
   };
-  const saveScores = () => {
-    Swal.fire({ title: 'กำลังบันทึกคะแนน...', didOpen: () => Swal.showLoading() });
-    const promises = Object.entries(tempScores).map(([key, score]) => {
-        const [studentId, assignmentId] = key.split('::');
-        return DataService.gradeSubmission(studentId, assignmentId, score as number, room);
-    });
-    Promise.all(promises).then(() => { fetchData(); Swal.fire('สำเร็จ', 'บันทึกคะแนนเรียบร้อยแล้ว', 'success'); })
-    .catch(err => { Swal.fire('ข้อผิดพลาด', 'บันทึกไม่สำเร็จบางรายการ', 'error'); });
-  };
-  const showImage = (url: string, title: string) => {
-    Swal.fire({ title: title, imageUrl: url, imageAlt: 'Assignment Image', width: '80%', showCloseButton: true, confirmButtonText: 'ปิด' });
-  };
-  const totalMaxScore = assignments.reduce((acc, curr) => acc + curr.maxScore, 0);
+
   return (
     <div>
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <div className="flex items-center gap-4 w-full md:w-auto">
-           <h3 className="text-xl font-bold text-gray-800 whitespace-nowrap">ตรวจงาน / ให้คะแนน</h3>
-           <select value={room} onChange={(e) => setRoom(e.target.value)} className="border-gray-300 rounded-lg px-3 py-2 border shadow-sm w-full md:w-48">
-             {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
-           </select>
+      <div className="flex justify-between mb-6">
+        <h3 className="text-xl font-bold">ตรวจงาน</h3>
+        <div className="flex gap-2">
+          <select value={room} onChange={e=>setRoom(e.target.value)} className="border rounded px-2">{ROOMS.map(r=><option key={r} value={r}>{r}</option>)}</select>
+          <button onClick={save} className="bg-green-600 text-white px-4 py-2 rounded">บันทึกทั้งหมด</button>
         </div>
-        <button onClick={saveScores} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition"><Save size={18} /> บันทึกทั้งหมด</button>
       </div>
-      {loading ? ( <div className="py-20 text-center text-gray-500">กำลังโหลดข้อมูล...</div> ) : (
-      <div className="overflow-x-auto border rounded-xl shadow-inner max-h-[600px] overflow-y-auto">
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-200 sticky top-0 z-10 shadow-sm">
-            <tr>
-              <th className="px-4 py-3 bg-gray-200 w-20">เลขที่</th>
-              <th className="px-4 py-3 bg-gray-200 w-48">ชื่อ-สกุล</th>
-              {assignments.map(a => (
-                <th key={a.id} className="px-2 py-3 bg-gray-200 min-w-[140px] text-center border-l border-gray-300">
-                  <div className="truncate w-24 mx-auto" title={a.title}>{a.title}</div>
-                  <div className="text-[10px] text-gray-500">({a.maxScore})</div>
-                </th>
-              ))}
-              <th className="px-2 py-3 bg-nbw-100 w-16 text-center border-l border-gray-300 font-bold text-gray-800">รวม</th>
-            </tr>
+      <div className="overflow-x-auto border rounded">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100">
+            <tr><th className="p-2">เลขที่</th><th className="p-2">ชื่อ</th>{assignments.map(a=><th key={a.id} className="p-2 border-l">{a.title}</th>)}</tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
-            {students.map(std => {
-              let currentTotal = 0;
-              return (
-                <tr key={std.id} className="bg-white hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-center">{std.number}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{std.name}</td>
-                  {assignments.map(assign => {
-                    const sub = submissions.find(s => s.studentId === std.studentId && s.assignmentId === assign.id);
-                    const key = `${std.studentId}::${assign.id}`;
-                    const displayScore = tempScores[key] !== undefined ? tempScores[key] : (sub?.score ?? '');
-                    currentTotal += (typeof displayScore === 'number' ? displayScore : 0);
-                    return (
-                      <td key={assign.id} className="px-2 py-3 border-l border-gray-100 bg-gray-50/30">
-                        <div className="flex flex-col items-center gap-2">
-                          {sub?.imageUrl ? ( <img src={sub.imageUrl} className="w-12 h-12 object-cover rounded cursor-pointer border hover:scale-110 transition shadow-sm" onClick={() => showImage(sub.imageUrl, `${std.name} - ${assign.title}`)}/> ) : ( <div className="w-12 h-12 bg-gray-100 rounded border flex items-center justify-center text-gray-300 text-xs">ไม่มี</div> )}
-                          <input type="number" className={`w-16 text-center border rounded px-1 py-0.5 focus:ring-2 focus:ring-blue-500 outline-none ${sub?.score !== null ? 'bg-green-50 border-green-200' : ''}`} placeholder="0" min="0" max={assign.maxScore} value={displayScore} onChange={(e) => handleScoreChange(key, e.target.value, assign.maxScore)}/>
-                        </div>
-                      </td>
-                    );
-                  })}
-                  <td className="px-2 py-3 border-l border-gray-200 bg-blue-50 text-center font-bold text-blue-700 text-base">{currentTotal}</td>
-                </tr>
-              );
-            })}
+          <tbody>
+            {students.map(s => (
+              <tr key={s.id} className="border-t">
+                <td className="p-2 text-center">{s.number}</td><td className="p-2">{s.name}</td>
+                {assignments.map(a => {
+                  const sub = submissions.find(x => x.studentId === s.studentId && x.assignmentId === a.id);
+                  const key = `${s.studentId}::${a.id}`;
+                  return (
+                    <td key={a.id} className="p-2 border-l text-center">
+                       <input type="number" className="w-12 border rounded text-center" 
+                         value={tempScores[key] !== undefined ? tempScores[key] : (sub?.score ?? '')}
+                         onChange={e => setTempScores({...tempScores, [key]: Number(e.target.value)})}
+                       />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-      )}
     </div>
   );
 };
@@ -524,202 +317,131 @@ const GradingSystem: React.FC = () => {
 const AnnouncementManager: React.FC = () => {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState<{ id?: string, title: string, content: string, imageUrl: string | null, isPinned: boolean, date: string }>({
     title: '', content: '', imageUrl: null, isPinned: false, date: ''
   });
-  const [loading, setLoading] = useState(true);
 
-  const fetchAnnouncements = async () => {
-    setLoading(true);
+  const fetch = async () => {
     const data = await DataService.getAnnouncements();
-    const sorted = data.sort((a,b) => (a.isPinned === b.isPinned) ? 0 : a.isPinned ? -1 : 1);
-    setAnnouncements(sorted);
-    setLoading(false);
+    setAnnouncements(data.sort((a,b) => (a.isPinned === b.isPinned) ? 0 : a.isPinned ? -1 : 1));
   };
+  useEffect(() => { fetch(); }, []);
 
-  useEffect(() => { fetchAnnouncements(); }, []);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if(file.size > 2 * 1024 * 1024) { Swal.fire('Warning', 'ขนาดไฟล์ใหญ่เกินไป (>2MB)', 'warning'); return; }
-      try {
-        const base64 = await DataService.fileToBase64(file);
-        setForm(prev => ({ ...prev, imageUrl: base64 }));
-      } catch (err) { Swal.fire('Error', 'อัปโหลดรูปภาพไม่สำเร็จ', 'error'); }
+      const base64 = await DataService.fileToBase64(file);
+      setForm({...form, imageUrl: base64});
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.content) { Swal.fire('แจ้งเตือน', 'กรุณากรอกหัวข้อและรายละเอียด', 'warning'); return; }
-
-    Swal.fire({title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading()});
-
+    setLoading(true);
+    Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+    
     const ann: Announcement = {
       id: form.id || DataService.generateUUID(),
       title: form.title,
       content: form.content,
-      imageUrl: form.imageUrl || undefined,
+      imageUrl: form.imageUrl || '',
       date: form.date || new Date().toLocaleDateString('th-TH'),
       isPinned: form.isPinned
     };
 
     try {
-      if (isEditing) {
-        await DataService.updateAnnouncement(ann);
-        Swal.fire('สำเร็จ', 'แก้ไขประกาศเรียบร้อย', 'success');
-      } else {
-        await DataService.addAnnouncement(ann);
-        Swal.fire('สำเร็จ', 'เพิ่มประกาศเรียบร้อย', 'success');
-      }
-      resetForm();
-      await fetchAnnouncements();
-    } catch (error) {
+      if (isEditing) await DataService.updateAnnouncement(ann);
+      else await DataService.addAnnouncement(ann);
+      
+      setForm({ title: '', content: '', imageUrl: null, isPinned: false, date: '' });
+      setIsEditing(false);
+      await fetch();
+      Swal.fire('สำเร็จ', 'บันทึกเรียบร้อย', 'success');
+    } catch (err) {
       Swal.fire('Error', 'บันทึกไม่สำเร็จ', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = (ann: Announcement) => {
-    setForm({
-      id: ann.id,
-      title: ann.title,
-      content: ann.content,
-      imageUrl: ann.imageUrl || null,
-      isPinned: ann.isPinned || false,
-      date: ann.date
-    });
+  const edit = (a: Announcement) => {
+    setForm({ id: a.id, title: a.title, content: a.content, imageUrl: a.imageUrl || null, isPinned: a.isPinned || false, date: a.date });
     setIsEditing(true);
   };
 
-  const handleDelete = (id: string) => {
-    Swal.fire({ title: 'ยืนยันการลบ?', text: "คุณต้องการลบประกาศนี้ใช่หรือไม่", icon: 'warning', showCancelButton: true, confirmButtonText: 'ลบ', cancelButtonText: 'ยกเลิก', confirmButtonColor: '#d33' })
-    .then(async (result) => {
-      if (result.isConfirmed) {
-        Swal.fire({title: 'กำลังลบ...', didOpen: () => Swal.showLoading()});
-        await DataService.deleteAnnouncement(id);
-        await fetchAnnouncements();
-        Swal.fire('ลบแล้ว', 'ประกาศถูกลบเรียบร้อย', 'success');
-      }
+  const del = (id: string) => {
+    Swal.fire({ title: 'ลบ?', icon: 'warning', showCancelButton: true }).then(async (r) => {
+      if (r.isConfirmed) { await DataService.deleteAnnouncement(id); fetch(); }
     });
-  };
-
-  const resetForm = () => {
-    setForm({ title: '', content: '', imageUrl: null, isPinned: false, date: '' });
-    setIsEditing(false);
   };
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
-      <div className="bg-white p-6 rounded-xl shadow-md border h-fit sticky top-4">
-        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          {isEditing ? <Edit2 size={24} className="text-blue-500"/> : <Plus size={24} className="text-green-500"/>}
-          {isEditing ? 'แก้ไขประกาศ' : 'เพิ่มประกาศใหม่'}
+      <div className="bg-white p-6 rounded-xl border h-fit shadow-sm">
+        <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+          {isEditing ? <Edit2 className="text-blue-500"/> : <Plus className="text-green-500"/>}
+          {isEditing ? 'แก้ไขประกาศ' : 'เพิ่มประกาศ'}
         </h3>
         <form onSubmit={handleSave} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">หัวข้อประกาศ</label>
-            <input type="text" className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="หัวข้อ..." value={form.title} onChange={e => setForm({...form, title: e.target.value})}/>
+          <input className="w-full border rounded p-2" placeholder="หัวข้อ" value={form.title} onChange={e=>setForm({...form, title:e.target.value})} required />
+          <textarea className="w-full border rounded p-2 h-32" placeholder="เนื้อหา" value={form.content} onChange={e=>setForm({...form, content:e.target.value})} required />
+          <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded border">
+            <input type="checkbox" checked={form.isPinned} onChange={e=>setForm({...form, isPinned:e.target.checked})} />
+            <span className="text-sm">ปักหมุดประกาศ</span>
+          </label>
+          <div className="flex items-center gap-3">
+            <label className="cursor-pointer bg-gray-100 px-4 py-2 rounded text-sm hover:bg-gray-200">
+              <ImageIcon size={18} className="inline mr-2" /> เลือกรูปภาพ
+              <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
+            </label>
+            {form.imageUrl && <span className="text-xs text-green-600 font-bold">มีรูปภาพ</span>}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
-            <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none h-32" placeholder="เนื้อหาประกาศ..." value={form.content} onChange={e => setForm({...form, content: e.target.value})}/>
-          </div>
-          <div className="flex flex-col gap-2">
-             <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded-lg border hover:bg-gray-100 transition">
-                <input type="checkbox" checked={form.isPinned} onChange={e => setForm({...form, isPinned: e.target.checked})} className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"/>
-                <span className="text-sm font-medium text-gray-700 flex items-center gap-1"><Pin size={16} /> ปักหมุดประกาศนี้ไว้บนสุด</span>
-             </label>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">รูปภาพประกอบ</label>
-              <div className="flex items-center gap-3">
-                <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition">
-                  <ImageIcon size={18} /> {form.imageUrl ? 'เปลี่ยนรูปภาพ' : 'เลือกรูปภาพ'}
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                </label>
-                {form.imageUrl && <span className="text-xs text-green-600 font-medium">โหลดรูปภาพแล้ว</span>}
-              </div>
-            </div>
-          </div>
-          {form.imageUrl && (
-            <div className="mt-2 relative inline-block">
-              <img src={form.imageUrl} alt="Preview" className="h-24 w-auto object-cover rounded border shadow-sm" />
-              <button type="button" onClick={() => setForm({...form, imageUrl: null})} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-sm"><X size={12} /></button>
-            </div>
-          )}
-          <div className="flex gap-2 pt-2">
-             <button type="submit" className={`flex-1 py-2 rounded-lg font-bold text-white shadow transition ${isEditing ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}`}>
-               {isEditing ? 'บันทึกการแก้ไข' : 'เพิ่มประกาศ'}
-             </button>
-             {isEditing && ( <button type="button" onClick={resetForm} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 font-medium">ยกเลิก</button> )}
+          {form.imageUrl && <div className="relative inline-block"><img src={form.imageUrl} className="h-20 rounded border"/><button type="button" onClick={()=>setForm({...form, imageUrl:null})} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X size={10}/></button></div>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={loading} className="flex-1 bg-nbw-600 text-white py-2 rounded font-bold hover:bg-nbw-700 disabled:opacity-50">บันทึก</button>
+            {isEditing && <button type="button" onClick={()=>{setIsEditing(false); setForm({title:'', content:'', imageUrl:null, isPinned:false, date:''})}} className="px-4 border rounded">ยกเลิก</button>}
           </div>
         </form>
       </div>
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-gray-800 mb-2">รายการประกาศทั้งหมด ({announcements.length})</h3>
-        {loading ? ( <div className="text-center py-10">กำลังโหลด...</div> ) : announcements.length === 0 ? ( <div className="text-center py-10 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl text-gray-400">ยังไม่มีประกาศ</div> ) : (
-          announcements.map(ann => (
-            <div key={ann.id} className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition ${ann.isPinned ? 'ring-2 ring-blue-100' : ''}`}>
-              <div className="flex">
-                {ann.imageUrl && ( <div className="w-24 h-auto bg-gray-100 flex-shrink-0"><img src={ann.imageUrl} className="w-full h-full object-cover" alt="thumb" /></div> )}
-                <div className="p-4 flex-grow">
-                   <div className="flex justify-between items-start">
-                     <div>
-                       <h4 className="font-bold text-gray-800 flex items-center gap-2">{ann.isPinned && <Pin size={14} className="text-blue-500" fill="currentColor"/>}{ann.title}</h4>
-                       <span className="text-xs text-gray-500">{ann.date}</span>
-                     </div>
-                     <div className="flex gap-1">
-                       <button onClick={() => handleEdit(ann)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded"><Edit2 size={16} /></button>
-                       <button onClick={() => handleDelete(ann.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded"><Trash2 size={16} /></button>
-                     </div>
-                   </div>
-                   <p className="text-sm text-gray-600 mt-2 line-clamp-2">{ann.content}</p>
+        {announcements.map(a => (
+          <div key={a.id} className={`p-4 bg-white rounded-xl border flex gap-4 ${a.isPinned ? 'ring-2 ring-blue-100' : ''}`}>
+            {a.imageUrl && <img src={a.imageUrl} className="w-20 h-20 object-cover rounded"/>}
+            <div className="flex-grow">
+              <div className="flex justify-between">
+                <h4 className="font-bold flex items-center gap-1">{a.isPinned && <Pin size={14} className="text-blue-500"/>}{a.title}</h4>
+                <div className="flex gap-1">
+                  <button onClick={()=>edit(a)} className="p-1 text-blue-500"><Edit2 size={14}/></button>
+                  <button onClick={()=>del(a.id)} className="p-1 text-red-500"><Trash2 size={14}/></button>
                 </div>
               </div>
+              <p className="text-xs text-gray-500 mb-1">{a.date}</p>
+              <p className="text-sm text-gray-600 line-clamp-2">{a.content}</p>
             </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
 const Dashboard: React.FC = () => {
-  const [data, setData] = useState<{name: string, submitted: number, total: number}[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any[]>([]);
   useEffect(() => {
-    const loadStats = async () => {
-        setLoading(true);
-        const [students, submissions, assignments] = await Promise.all([ DataService.getStudents(), DataService.getSubmissions(), DataService.getAssignments() ]);
-        const assignmentsCount = assignments.length;
-        const stats = ROOMS.map(room => {
-            const roomStudents = students.filter(s => s.room === room);
-            const expected = roomStudents.length * assignmentsCount;
-            const actual = submissions.filter(sub => roomStudents.some(s => s.studentId === sub.studentId)).length;
-            return { name: room.split('/')[1], submitted: actual, total: expected };
-        });
-        setData(stats);
-        setLoading(false);
-    };
-    loadStats();
+    Promise.all([DataService.getStudents(), DataService.getSubmissions(), DataService.getAssignments()]).then(([students, subs, assigns]) => {
+      const stats = ROOMS.map(r => ({
+        name: r.split('/')[1],
+        total: students.filter(s=>s.room===r).length * assigns.length,
+        submitted: subs.filter(sub => students.filter(s=>s.room===r).some(s=>s.studentId===sub.studentId)).length
+      }));
+      setData(stats);
+    });
   }, []);
-  if (loading) return <div className="text-center py-10">กำลังโหลดสรุปผล...</div>;
   return (
-    <div>
-      <h3 className="text-xl font-bold text-gray-800 mb-6">รายงานสรุปการส่งงาน</h3>
-      <div className="h-80 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="name" label={{ value: 'ห้อง ม.5 / ...', position: 'insideBottom', offset: -5 }} />
-            <YAxis />
-            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
-            <Legend />
-            <Bar dataKey="total" name="จำนวนงานที่ต้องส่ง" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="submitted" name="ส่งแล้ว" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+    <div className="h-80 w-full">
+      <h3 className="text-xl font-bold mb-6">สรุปการส่งงาน</h3>
+      <ResponsiveContainer><BarChart data={data}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip/><Legend/><Bar dataKey="total" name="งานทั้งหมด" fill="#e5e7eb"/><Bar dataKey="submitted" name="ส่งแล้ว" fill="#0ea5e9"/></BarChart></ResponsiveContainer>
     </div>
   );
 }
