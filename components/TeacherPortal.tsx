@@ -331,21 +331,34 @@ const AnnouncementManager: React.FC = () => {
   const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const base64 = await DataService.fileToBase64(file);
-      setForm({...form, imageUrl: base64});
+      if (file.size > 2 * 1024 * 1024) {
+        Swal.fire('ขนาดไฟล์ใหญ่เกินไป', 'กรุณาเลือกรูปภาพขนาดไม่เกิน 2MB เพื่อการบันทึกข้อมูลที่เสถียร', 'warning');
+        return;
+      }
+      try {
+        const base64 = await DataService.fileToBase64(file);
+        setForm({...form, imageUrl: base64});
+      } catch (err) {
+        Swal.fire('Error', 'ไม่สามารถประมวลผลรูปภาพได้', 'error');
+      }
     }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.title || !form.content) {
+      Swal.fire('แจ้งเตือน', 'กรุณากรอกข้อมูลให้ครบถ้วน', 'warning');
+      return;
+    }
+    
     setLoading(true);
-    Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'กำลังบันทึกข้อมูล...', didOpen: () => Swal.showLoading() });
     
     const ann: Announcement = {
       id: form.id || DataService.generateUUID(),
       title: form.title,
       content: form.content,
-      imageUrl: form.imageUrl || '',
+      imageUrl: form.imageUrl || '', 
       date: form.date || new Date().toLocaleDateString('th-TH'),
       isPinned: form.isPinned
     };
@@ -357,67 +370,123 @@ const AnnouncementManager: React.FC = () => {
       setForm({ title: '', content: '', imageUrl: null, isPinned: false, date: '' });
       setIsEditing(false);
       await fetch();
-      Swal.fire('สำเร็จ', 'บันทึกเรียบร้อย', 'success');
+      Swal.fire('สำเร็จ', 'บันทึกประกาศเรียบร้อยแล้ว', 'success');
     } catch (err) {
-      Swal.fire('Error', 'บันทึกไม่สำเร็จ', 'error');
+      console.error(err);
+      Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลลงตารางได้ กรุณาตรวจสอบการเชื่อมต่อ', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const edit = (a: Announcement) => {
-    setForm({ id: a.id, title: a.title, content: a.content, imageUrl: a.imageUrl || null, isPinned: a.isPinned || false, date: a.date });
+    setForm({ 
+      id: a.id, 
+      title: a.title, 
+      content: a.content, 
+      imageUrl: a.imageUrl || null, 
+      isPinned: a.isPinned || false, 
+      date: a.date 
+    });
     setIsEditing(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const del = (id: string) => {
-    Swal.fire({ title: 'ลบ?', icon: 'warning', showCancelButton: true }).then(async (r) => {
-      if (r.isConfirmed) { await DataService.deleteAnnouncement(id); fetch(); }
+    Swal.fire({ 
+      title: 'ลบประกาศ?', 
+      text: 'คุณต้องการลบประกาศนี้ใช่หรือไม่',
+      icon: 'warning', 
+      showCancelButton: true,
+      confirmButtonText: 'ใช่, ลบเลย',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#d33'
+    }).then(async (r) => {
+      if (r.isConfirmed) { 
+        Swal.fire({ title: 'กำลังลบ...', didOpen: () => Swal.showLoading() });
+        await DataService.deleteAnnouncement(id); 
+        fetch(); 
+        Swal.fire('สำเร็จ', 'ลบประกาศแล้ว', 'success');
+      }
     });
   };
 
   return (
     <div className="grid md:grid-cols-2 gap-8">
-      <div className="bg-white p-6 rounded-xl border h-fit shadow-sm">
+      <div className="bg-white p-6 rounded-xl border h-fit shadow-sm sticky top-4">
         <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
           {isEditing ? <Edit2 className="text-blue-500"/> : <Plus className="text-green-500"/>}
-          {isEditing ? 'แก้ไขประกาศ' : 'เพิ่มประกาศ'}
+          {isEditing ? 'แก้ไขประกาศ' : 'เพิ่มประกาศใหม่'}
         </h3>
         <form onSubmit={handleSave} className="space-y-4">
-          <input className="w-full border rounded p-2" placeholder="หัวข้อ" value={form.title} onChange={e=>setForm({...form, title:e.target.value})} required />
-          <textarea className="w-full border rounded p-2 h-32" placeholder="เนื้อหา" value={form.content} onChange={e=>setForm({...form, content:e.target.value})} required />
-          <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-2 rounded border">
-            <input type="checkbox" checked={form.isPinned} onChange={e=>setForm({...form, isPinned:e.target.checked})} />
-            <span className="text-sm">ปักหมุดประกาศ</span>
-          </label>
-          <div className="flex items-center gap-3">
-            <label className="cursor-pointer bg-gray-100 px-4 py-2 rounded text-sm hover:bg-gray-200">
-              <ImageIcon size={18} className="inline mr-2" /> เลือกรูปภาพ
-              <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
-            </label>
-            {form.imageUrl && <span className="text-xs text-green-600 font-bold">มีรูปภาพ</span>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">หัวข้อประกาศ</label>
+            <input className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-nbw-500 outline-none" placeholder="หัวข้อ..." value={form.title} onChange={e=>setForm({...form, title:e.target.value})} required />
           </div>
-          {form.imageUrl && <div className="relative inline-block"><img src={form.imageUrl} className="h-20 rounded border"/><button type="button" onClick={()=>setForm({...form, imageUrl:null})} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X size={10}/></button></div>}
-          <div className="flex gap-2">
-            <button type="submit" disabled={loading} className="flex-1 bg-nbw-600 text-white py-2 rounded font-bold hover:bg-nbw-700 disabled:opacity-50">บันทึก</button>
-            {isEditing && <button type="button" onClick={()=>{setIsEditing(false); setForm({title:'', content:'', imageUrl:null, isPinned:false, date:''})}} className="px-4 border rounded">ยกเลิก</button>}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">รายละเอียด</label>
+            <textarea className="w-full border rounded-lg p-2 h-32 focus:ring-2 focus:ring-nbw-500 outline-none" placeholder="เนื้อหา..." value={form.content} onChange={e=>setForm({...form, content:e.target.value})} required />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-3 rounded-lg border hover:bg-gray-100 transition">
+            <input type="checkbox" className="w-4 h-4 text-nbw-600 rounded" checked={form.isPinned} onChange={e=>setForm({...form, isPinned:e.target.checked})} />
+            <span className="text-sm font-medium flex items-center gap-1"><Pin size={14} className="text-blue-500"/> ปักหมุดประกาศนี้ไว้ด้านบนสุด</span>
+          </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">รูปภาพประกอบ (แนะนำไม่เกิน 2MB)</label>
+            <div className="flex items-center gap-3">
+              <label className="cursor-pointer bg-nbw-50 text-nbw-600 border border-nbw-100 px-4 py-2 rounded-lg text-sm hover:bg-nbw-100 transition flex items-center gap-2">
+                <ImageIcon size={18} /> เลือกรูปภาพ
+                <input type="file" accept="image/*" className="hidden" onChange={handleImage} />
+              </label>
+              {form.imageUrl && <span className="text-xs text-green-600 font-bold">พร้อมอัปโหลด</span>}
+            </div>
+          </div>
+          {form.imageUrl && (
+            <div className="relative inline-block mt-2">
+              <img src={form.imageUrl} className="h-40 rounded-lg border shadow-md object-cover"/>
+              <button type="button" onClick={()=>setForm({...form, imageUrl:null})} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition">
+                <X size={14}/>
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 pt-4">
+            <button type="submit" disabled={loading} className={`flex-1 text-white py-2.5 rounded-lg font-bold shadow transition disabled:opacity-50 ${isEditing ? 'bg-blue-600 hover:bg-blue-700' : 'bg-green-600 hover:bg-green-700'}`}>
+              {isEditing ? 'บันทึกการแก้ไข' : 'โพสต์ประกาศ'}
+            </button>
+            {isEditing && (
+              <button type="button" onClick={()=>{setIsEditing(false); setForm({title:'', content:'', imageUrl:null, isPinned:false, date:''})}} className="px-4 border rounded-lg bg-gray-50 text-gray-600 hover:bg-gray-100 font-medium">
+                ยกเลิก
+              </button>
+            )}
           </div>
         </form>
       </div>
       <div className="space-y-4">
-        {announcements.map(a => (
-          <div key={a.id} className={`p-4 bg-white rounded-xl border flex gap-4 ${a.isPinned ? 'ring-2 ring-blue-100' : ''}`}>
-            {a.imageUrl && <img src={a.imageUrl} className="w-20 h-20 object-cover rounded"/>}
-            <div className="flex-grow">
-              <div className="flex justify-between">
-                <h4 className="font-bold flex items-center gap-1">{a.isPinned && <Pin size={14} className="text-blue-500"/>}{a.title}</h4>
-                <div className="flex gap-1">
-                  <button onClick={()=>edit(a)} className="p-1 text-blue-500"><Edit2 size={14}/></button>
-                  <button onClick={()=>del(a.id)} className="p-1 text-red-500"><Trash2 size={14}/></button>
+        <h3 className="text-lg font-bold text-gray-700">ประกาศทั้งหมด ({announcements.length})</h3>
+        {announcements.length === 0 ? (
+          <div className="text-center py-20 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl text-gray-400">ยังไม่มีประกาศในขณะนี้</div>
+        ) : announcements.map(a => (
+          <div key={a.id} className={`p-4 bg-white rounded-xl border flex gap-4 hover:shadow-md transition ${a.isPinned ? 'ring-2 ring-blue-100 border-blue-200' : 'border-gray-100'}`}>
+            {a.imageUrl ? (
+              <img src={a.imageUrl} className="w-24 h-24 object-cover rounded-lg flex-shrink-0 border bg-gray-50"/>
+            ) : (
+              <div className="w-24 h-24 bg-gray-50 rounded-lg flex-shrink-0 border flex items-center justify-center text-gray-300">
+                <ImageIcon size={32} />
+              </div>
+            )}
+            <div className="flex-grow min-w-0">
+              <div className="flex justify-between items-start gap-2">
+                <h4 className="font-bold text-gray-800 truncate flex items-center gap-1">
+                  {a.isPinned && <Pin size={14} className="text-blue-500" fill="currentColor"/>}
+                  {a.title}
+                </h4>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={()=>edit(a)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition" title="แก้ไข"><Edit2 size={16}/></button>
+                  <button onClick={()=>del(a.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition" title="ลบ"><Trash2 size={16}/></button>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mb-1">{a.date}</p>
-              <p className="text-sm text-gray-600 line-clamp-2">{a.content}</p>
+              <p className="text-xs text-gray-400 mb-2">{a.date}</p>
+              <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">{a.content}</p>
             </div>
           </div>
         ))}
@@ -428,6 +497,7 @@ const AnnouncementManager: React.FC = () => {
 
 const Dashboard: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     Promise.all([DataService.getStudents(), DataService.getSubmissions(), DataService.getAssignments()]).then(([students, subs, assigns]) => {
       const stats = ROOMS.map(r => ({
@@ -436,12 +506,29 @@ const Dashboard: React.FC = () => {
         submitted: subs.filter(sub => students.filter(s=>s.room===r).some(s=>s.studentId===sub.studentId)).length
       }));
       setData(stats);
+      setLoading(false);
     });
   }, []);
+  
+  if (loading) return <div className="text-center py-20 text-gray-400">กำลังประมวลผลข้อมูล...</div>;
+  
   return (
     <div className="h-80 w-full">
-      <h3 className="text-xl font-bold mb-6">สรุปการส่งงาน</h3>
-      <ResponsiveContainer><BarChart data={data}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name"/><YAxis/><Tooltip/><Legend/><Bar dataKey="total" name="งานทั้งหมด" fill="#e5e7eb"/><Bar dataKey="submitted" name="ส่งแล้ว" fill="#0ea5e9"/></BarChart></ResponsiveContainer>
+      <h3 className="text-xl font-bold mb-6 text-gray-800">สรุปการส่งงานรวมทุกห้อง</h3>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip 
+            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+            cursor={{ fill: 'transparent' }}
+          />
+          <Legend />
+          <Bar dataKey="total" name="จำนวนที่ต้องส่ง" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="submitted" name="ส่งแล้ว" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
