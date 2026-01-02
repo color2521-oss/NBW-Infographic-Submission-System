@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { 
@@ -256,25 +257,46 @@ const AssignmentManager: React.FC = () => {
 
   const handleEdit = async (assign: Assignment) => {
     const { value: formValues } = await Swal.fire({
-      title: 'แก้ไขข้อมูลภาระงาน',
-      html: `
-        <div class="text-left mb-1 font-bold text-gray-700">ชื่อภาระงาน:</div>
-        <input id="swal-title" class="swal2-input w-full mb-4" style="margin-top: 0;" value="${assign.title}" placeholder="ชื่อภาระงาน">
-        <div class="text-left mb-1 font-bold text-gray-700">คะแนนเต็ม:</div>
-        <input id="swal-score" type="number" class="swal2-input w-full" style="margin-top: 0;" value="${assign.maxScore}" placeholder="คะแนนเต็ม">
+      title: `
+        <div class="flex items-center justify-center gap-2 text-nbw-600">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-edit"><path d="M4 22h16a2 2 0 0 0 2-2V7.5L16.5 2H6a2 2 0 0 0-2 2v4"/><polyline points="14 2 14 8 20 8"/><path d="m22 15.5-10 10H2v-10l10-10L22 15.5z"/><path d="m15 12.5 5 5"/></svg>
+          <span class="text-xl font-bold">แก้ไขภาระงาน</span>
+        </div>
       `,
+      html: `
+        <div class="text-left space-y-4 px-2 mt-4">
+          <div class="bg-nbw-50 p-3 rounded-xl border border-nbw-100 mb-6 text-center">
+             <p class="text-xs text-nbw-600 font-bold uppercase tracking-widest">ID: ${assign.id}</p>
+             <p class="text-sm text-gray-500 font-medium">ลำดับที่ในระบบ: ${assign.order}</p>
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">ชื่อภาระงาน</label>
+            <input id="swal-title" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-nbw-500 focus:border-nbw-500 focus:outline-none transition-all text-gray-800 font-medium" value="${assign.title}" placeholder="เช่น งานชิ้นที่ 1">
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wide ml-1">คะแนนเต็ม</label>
+            <input id="swal-score" type="number" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-nbw-500 focus:border-nbw-500 focus:outline-none transition-all text-gray-800 font-medium" value="${assign.maxScore}" placeholder="0">
+          </div>
+        </div>
+      `,
+      customClass: {
+        popup: 'rounded-3xl border-t-8 border-nbw-500 shadow-2xl p-6',
+        confirmButton: 'bg-nbw-600 hover:bg-nbw-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5',
+        cancelButton: 'bg-gray-100 hover:bg-gray-200 text-gray-500 px-8 py-3 rounded-xl font-bold transition-all ml-3'
+      },
+      buttonsStyling: false,
       focusConfirm: false,
       showCancelButton: true,
-      confirmButtonText: 'บันทึก',
+      confirmButtonText: 'บันทึกข้อมูล',
       cancelButtonText: 'ยกเลิก',
       preConfirm: () => {
         const title = (document.getElementById('swal-title') as HTMLInputElement).value;
         const score = (document.getElementById('swal-score') as HTMLInputElement).value;
-        if (!title || !score) {
+        if (!title.trim() || !score) {
           Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
           return false;
         }
-        return { title, maxScore: Number(score) };
+        return { title: title.trim(), maxScore: Number(score) };
       }
     });
 
@@ -283,7 +305,13 @@ const AssignmentManager: React.FC = () => {
         Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
         await DataService.updateAssignment({ ...assign, ...formValues });
         await fetchAssignments();
-        Swal.fire('สำเร็จ', 'แก้ไขข้อมูลเรียบร้อยแล้ว', 'success');
+        Swal.fire({
+          icon: 'success',
+          title: 'สำเร็จ',
+          text: 'อัปเดตข้อมูลภาระงานเรียบร้อยแล้ว',
+          timer: 2000,
+          showConfirmButton: false
+        });
       } catch (err) {
         Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
       }
@@ -296,33 +324,38 @@ const AssignmentManager: React.FC = () => {
         <h3 className="text-xl font-bold flex items-center gap-2">
           <FileEdit className="text-nbw-600" /> จัดการภาระงาน
         </h3>
-        <button onClick={fetchAssignments} className="text-sm text-nbw-600 hover:underline">รีเฟรชข้อมูล</button>
+        <button onClick={fetchAssignments} className="text-sm text-nbw-600 hover:underline bg-nbw-50 px-3 py-1 rounded-full font-medium transition-colors">รีเฟรชข้อมูล</button>
       </div>
       
       {loading ? (
-        <div className="text-center py-10">
+        <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nbw-500 mx-auto"></div>
         </div>
       ) : (
         <div className="grid gap-4">
-          {assignments.map(a => (
-            <div key={a.id} className="p-4 border border-gray-100 rounded-2xl flex justify-between items-center bg-gray-50/50 hover:bg-white hover:shadow-md transition-all group">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-nbw-100 flex items-center justify-center text-nbw-600 font-bold">
+          {assignments.length === 0 ? (
+            <div className="text-center py-10 bg-gray-50 rounded-2xl text-gray-400">ยังไม่มีข้อมูลภาระงาน</div>
+          ) : assignments.map(a => (
+            <div key={a.id} className="p-5 border border-gray-100 rounded-2xl flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-all group border-l-4 border-l-nbw-500">
+              <div className="flex items-center gap-5">
+                <div className="w-12 h-12 rounded-2xl bg-nbw-50 flex items-center justify-center text-nbw-600 font-bold text-lg shadow-inner">
                   {a.order}
                 </div>
                 <div>
-                  <div className="font-bold text-gray-800 group-hover:text-nbw-600 transition-colors">{a.title}</div>
-                  <div className="text-sm text-gray-500">
-                    คะแนนเต็ม: <span className="font-bold text-nbw-600">{a.maxScore}</span> 
-                    <span className="mx-2">|</span>
-                    {a.term === 'pre-midterm' ? 'ก่อนกลางภาค' : 'หลังกลางภาค'}
+                  <div className="font-bold text-gray-800 text-lg group-hover:text-nbw-600 transition-colors">{a.title}</div>
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs font-bold px-2 py-0.5 bg-nbw-100 text-nbw-700 rounded uppercase tracking-wider">
+                      {a.maxScore} คะแนน
+                    </span>
+                    <span className="text-xs text-gray-400 font-medium">
+                      {a.term === 'pre-midterm' ? 'ช่วงก่อนกลางภาค' : 'ช่วงหลังกลางภาค'}
+                    </span>
                   </div>
                 </div>
               </div>
               <button 
                 onClick={() => handleEdit(a)} 
-                className="p-2 text-gray-400 hover:text-nbw-600 hover:bg-nbw-50 rounded-xl transition-all"
+                className="p-3 bg-gray-50 text-gray-400 hover:text-nbw-600 hover:bg-nbw-100 rounded-2xl transition-all shadow-sm"
                 title="แก้ไขภาระงาน"
               >
                 <Edit2 size={20} />
@@ -331,9 +364,13 @@ const AssignmentManager: React.FC = () => {
           ))}
         </div>
       )}
-      <div className="mt-8 p-4 bg-blue-50 rounded-xl text-blue-700 text-sm">
-        <p className="font-bold mb-1">คำแนะนำ:</p>
-        <p>การแก้ไขชื่อภาระงานหรือคะแนนเต็มจะส่งผลต่อการแสดงผลในหน้าสรุปคะแนนและหน้านักเรียนทันที ข้อมูลจะถูกบันทึกลงในชีท Assignments โดยใช้ ID ของงานเป็นตัวอ้างอิง</p>
+      <div className="mt-8 p-5 bg-blue-50/50 rounded-2xl border border-blue-100 text-blue-800 text-sm leading-relaxed">
+        <p className="font-bold mb-2 flex items-center gap-2">
+          {/* Fix: changed class to className and hyphenated attributes to camelCase in JSX SVG */}
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          คำแนะนำสำหรับครู:
+        </p>
+        <p>คุณสามารถแก้ไขชื่อและคะแนนของงานแต่ละชิ้นได้ที่นี่ เมื่อบันทึกแล้ว ข้อมูลจะถูกดึงไปใช้ในการคำนวณคะแนนรวมและแสดงผลในหน้านักเรียนโดยอัตโนมัติ</p>
       </div>
     </div>
   );
