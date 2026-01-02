@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { 
-  Users, FileEdit, BarChart2, CheckSquare, Save, Trash2, Edit2, Plus, X, Bell, Image as ImageIcon, Pin, FileSpreadsheet, Copy
+  Users, FileEdit, BarChart2, CheckSquare, Save, Trash2, Edit2, Plus, X, Bell, Image as ImageIcon, Pin, FileSpreadsheet, Copy, Maximize2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as DataService from '../services/dataService';
@@ -259,57 +259,156 @@ const GradingSystem: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [tempScores, setTempScores] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
   
   const fetchData = async () => {
-    const [s, a, sub] = await Promise.all([DataService.getStudents(room), DataService.getAssignments(), DataService.getSubmissions(room)]);
-    setStudents(s.sort((a,b)=>a.number-b.number)); setAssignments(a); setSubmissions(sub);
+    setLoading(true);
+    try {
+      const [s, a, sub] = await Promise.all([
+        DataService.getStudents(room), 
+        DataService.getAssignments(), 
+        DataService.getSubmissions(room)
+      ]);
+      setStudents(s.sort((a,b)=>a.number-b.number)); 
+      setAssignments(a); 
+      setSubmissions(sub);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
+  
   useEffect(() => { fetchData(); }, [room]);
 
   const save = async () => {
     Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
-    await Promise.all(Object.entries(tempScores).map(([k, v]) => {
-      const [sid, aid] = k.split('::');
-      return DataService.gradeSubmission(sid, aid, v, room);
-    }));
-    fetchData(); setTempScores({}); Swal.fire('สำเร็จ', 'บันทึกแล้ว', 'success');
+    try {
+      await Promise.all(Object.entries(tempScores).map(([k, v]) => {
+        const [sid, aid] = k.split('::');
+        return DataService.gradeSubmission(sid, aid, v, room);
+      }));
+      await fetchData(); 
+      setTempScores({}); 
+      Swal.fire('สำเร็จ', 'บันทึกคะแนนเรียบร้อยแล้ว', 'success');
+    } catch (err) {
+      Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+    }
+  };
+
+  const showFullImage = (url: string) => {
+    Swal.fire({
+      imageUrl: url,
+      imageAlt: 'ผลงานนักเรียน',
+      showConfirmButton: false,
+      showCloseButton: true,
+      background: 'white',
+      backdrop: 'rgba(0,0,0,0.8)',
+      width: '80%',
+      customClass: {
+        image: 'max-h-[85vh] object-contain rounded-lg shadow-2xl'
+      }
+    });
   };
 
   return (
     <div>
-      <div className="flex justify-between mb-6">
-        <h3 className="text-xl font-bold">ตรวจงาน</h3>
-        <div className="flex gap-2">
-          <select value={room} onChange={e=>setRoom(e.target.value)} className="border rounded px-2">{ROOMS.map(r=><option key={r} value={r}>{r}</option>)}</select>
-          <button onClick={save} className="bg-green-600 text-white px-4 py-2 rounded">บันทึกทั้งหมด</button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2">
+          <CheckSquare className="text-blue-600" /> ตรวจงานและให้คะแนน
+        </h3>
+        <div className="flex gap-2 w-full md:w-auto">
+          <select value={room} onChange={e=>setRoom(e.target.value)} className="border rounded-lg px-4 py-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none">
+            {ROOMS.map(r=><option key={r} value={r}>{r}</option>)}
+          </select>
+          <button 
+            onClick={save} 
+            disabled={Object.keys(tempScores).length === 0}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg font-bold text-white shadow transition-all ${
+              Object.keys(tempScores).length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'
+            }`}
+          >
+            <Save size={18} /> บันทึกทั้งหมด
+          </button>
         </div>
       </div>
-      <div className="overflow-x-auto border rounded">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100">
-            <tr><th className="p-2">เลขที่</th><th className="p-2">ชื่อ</th>{assignments.map(a=><th key={a.id} className="p-2 border-l">{a.title}</th>)}</tr>
-          </thead>
-          <tbody>
-            {students.map(s => (
-              <tr key={s.id} className="border-t">
-                <td className="p-2 text-center">{s.number}</td><td className="p-2">{s.name}</td>
-                {assignments.map(a => {
-                  const sub = submissions.find(x => x.studentId === s.studentId && x.assignmentId === a.id);
-                  const key = `${s.studentId}::${a.id}`;
-                  return (
-                    <td key={a.id} className="p-2 border-l text-center">
-                       <input type="number" className="w-12 border rounded text-center" 
-                         value={tempScores[key] !== undefined ? tempScores[key] : (sub?.score ?? '')}
-                         onChange={e => setTempScores({...tempScores, [key]: Number(e.target.value)})}
-                       />
-                    </td>
-                  );
-                })}
+
+      {loading ? (
+        <div className="text-center py-20">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="text-gray-400 mt-2">กำลังโหลดข้อมูลการส่งงาน...</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto border rounded-xl shadow-sm">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 text-gray-700">
+              <tr>
+                <th className="p-4 w-16 text-center">เลขที่</th>
+                <th className="p-4 min-w-[150px]">ชื่อ-สกุล</th>
+                {assignments.map(a => (
+                  <th key={a.id} className="p-4 border-l min-w-[120px] text-center">
+                    <div className="text-xs uppercase opacity-60 mb-1">Max: {a.maxScore}</div>
+                    <div className="font-bold truncate max-w-[100px] mx-auto" title={a.title}>{a.title}</div>
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y">
+              {students.length === 0 ? (
+                <tr><td colSpan={assignments.length + 2} className="p-10 text-center text-gray-400">ไม่พบข้อมูลนักเรียนในห้องนี้</td></tr>
+              ) : students.map(s => (
+                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4 text-center font-medium text-gray-500">{s.number}</td>
+                  <td className="p-4 font-semibold text-gray-800">{s.name}</td>
+                  {assignments.map(a => {
+                    const sub = submissions.find(x => x.studentId === s.studentId && x.assignmentId === a.id);
+                    const key = `${s.studentId}::${a.id}`;
+                    return (
+                      <td key={a.id} className="p-4 border-l">
+                         <div className="flex flex-col items-center gap-3">
+                           {/* ส่วนแสดงรูปภาพที่นักเรียนส่ง */}
+                           {sub?.imageUrl ? (
+                             <div className="relative group">
+                               <img 
+                                 src={sub.imageUrl} 
+                                 className="h-12 w-12 object-cover rounded shadow-sm border border-gray-200 cursor-pointer hover:scale-110 transition-transform" 
+                                 onClick={() => showFullImage(sub.imageUrl)}
+                                 title="คลิกเพื่อดูรูปขนาดเต็ม"
+                               />
+                               <div className="absolute -top-1 -right-1 bg-blue-500 text-white p-0.5 rounded-full shadow-md pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <Maximize2 size={8} />
+                               </div>
+                             </div>
+                           ) : (
+                             <div className="h-12 w-12 rounded border border-dashed border-gray-200 flex items-center justify-center text-gray-300" title="ยังไม่ส่งงาน">
+                               <ImageIcon size={16} />
+                             </div>
+                           )}
+
+                           {/* ส่วนกรอกคะแนน */}
+                           <div className="flex items-center gap-1">
+                             <input 
+                               type="number" 
+                               max={a.maxScore}
+                               min={0}
+                               className={`w-14 border rounded-lg text-center py-1 font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
+                                 tempScores[key] !== undefined ? 'bg-yellow-50 border-yellow-300 text-blue-700' : 'bg-white text-gray-700'
+                               }`} 
+                               value={tempScores[key] !== undefined ? tempScores[key] : (sub?.score ?? '')}
+                               onChange={e => setTempScores({...tempScores, [key]: Number(e.target.value)})}
+                               placeholder="-"
+                             />
+                           </div>
+                         </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
@@ -415,7 +514,7 @@ const AnnouncementManager: React.FC = () => {
     <div className="grid md:grid-cols-2 gap-8">
       <div className="bg-white p-6 rounded-xl border h-fit shadow-sm sticky top-4">
         <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-          {isEditing ? <Edit2 className="text-blue-500"/> : <Plus className="text-green-500"/>}
+          {isEditing ? <Edit2 className="text-nbw-500"/> : <Plus className="text-green-500"/>}
           {isEditing ? 'แก้ไขประกาศ' : 'เพิ่มประกาศใหม่'}
         </h3>
         <form onSubmit={handleSave} className="space-y-4">
@@ -429,7 +528,7 @@ const AnnouncementManager: React.FC = () => {
           </div>
           <label className="flex items-center gap-2 cursor-pointer bg-gray-50 p-3 rounded-lg border hover:bg-gray-100 transition">
             <input type="checkbox" className="w-4 h-4 text-nbw-600 rounded" checked={form.isPinned} onChange={e=>setForm({...form, isPinned:e.target.checked})} />
-            <span className="text-sm font-medium flex items-center gap-1"><Pin size={14} className="text-blue-500"/> ปักหมุดประกาศนี้ไว้ด้านบนสุด</span>
+            <span className="text-sm font-medium flex items-center gap-1"><Pin size={14} className="text-nbw-500"/> ปักหมุดประกาศนี้ไว้ด้านบนสุด</span>
           </label>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">รูปภาพประกอบ (แนะนำไม่เกิน 2MB)</label>
@@ -477,7 +576,7 @@ const AnnouncementManager: React.FC = () => {
             <div className="flex-grow min-w-0">
               <div className="flex justify-between items-start gap-2">
                 <h4 className="font-bold text-gray-800 truncate flex items-center gap-1">
-                  {a.isPinned && <Pin size={14} className="text-blue-500" fill="currentColor"/>}
+                  {a.isPinned && <Pin size={14} className="text-nbw-500" fill="currentColor"/>}
                   {a.title}
                 </h4>
                 <div className="flex gap-1 flex-shrink-0">
