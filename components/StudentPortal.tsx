@@ -1,6 +1,8 @@
+
+
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { Search, Upload, CheckCircle, XCircle, Save, UserPlus, FileText } from 'lucide-react';
+import { Search, Upload, CheckCircle, XCircle, Save, UserPlus, FileText, Loader2, Maximize2, Image as ImageIcon } from 'lucide-react';
 import { Student, ROOMS, NUMBERS, Assignment, Submission } from '../types';
 import * as DataService from '../services/dataService';
 
@@ -8,21 +10,21 @@ export const StudentPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'register' | 'submit'>('register');
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8">
+    <div className="max-w-5xl mx-auto p-4">
       <div className="flex justify-center mb-8">
-        <div className="bg-white p-1 rounded-xl shadow-sm border flex">
+        <div className="bg-white p-1 rounded-xl shadow-sm border flex gap-1">
           <button
             onClick={() => setActiveTab('register')}
-            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'register' ? 'bg-nbw-600 text-white shadow-md' : 'text-gray-500 hover:text-nbw-600'
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeTab === 'register' ? 'bg-nbw-600 text-white shadow' : 'text-gray-500 hover:text-nbw-600'
             }`}
           >
             <div className="flex items-center gap-2"><UserPlus size={16} /> ลงทะเบียน</div>
           </button>
           <button
             onClick={() => setActiveTab('submit')}
-            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'submit' ? 'bg-nbw-600 text-white shadow-md' : 'text-gray-500 hover:text-nbw-600'
+            className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${
+              activeTab === 'submit' ? 'bg-nbw-600 text-white shadow' : 'text-gray-500 hover:text-nbw-600'
             }`}
           >
             <div className="flex items-center gap-2"><FileText size={16} /> ส่งงาน / ดูคะแนน</div>
@@ -30,7 +32,9 @@ export const StudentPortal: React.FC = () => {
         </div>
       </div>
 
-      {activeTab === 'register' ? <RegistrationForm /> : <SubmissionPortal />}
+      <div className="animate-fade-in">
+        {activeTab === 'register' ? <RegistrationForm /> : <SubmissionPortal />}
+      </div>
     </div>
   );
 };
@@ -51,20 +55,10 @@ const RegistrationForm: React.FC = () => {
       return;
     }
 
-    if (!form.name.trim()) {
-        Swal.fire('ข้อผิดพลาด', 'กรุณากรอกชื่อ-สกุล', 'error');
-        return;
-    }
-
-    Swal.fire({
-      title: 'กำลังตรวจสอบ...',
-      didOpen: () => Swal.showLoading(),
-    });
+    Swal.fire({ title: 'กำลังตรวจสอบ...', didOpen: () => Swal.showLoading() });
 
     try {
-      // Fetch all students to check for duplicates
       const existingStudents = await DataService.getStudents();
-      // Compare as strings to prevent type mismatches
       const isDuplicate = existingStudents.some(s => String(s.studentId).trim() === form.studentId.trim());
 
       if (isDuplicate) {
@@ -72,11 +66,6 @@ const RegistrationForm: React.FC = () => {
         return;
       }
       
-      Swal.fire({
-        title: 'กำลังบันทึกข้อมูล...',
-        didOpen: () => Swal.showLoading(),
-      });
-
       const payload: Student = {
         ...form,
         name: form.name.trim(),
@@ -85,27 +74,35 @@ const RegistrationForm: React.FC = () => {
       };
       
       await DataService.registerStudent(payload);
-      Swal.fire('สำเร็จ', 'บันทึกข้อมูลลงทะเบียนเรียบร้อยแล้ว', 'success');
+      Swal.fire({
+        icon: 'success',
+        title: 'ลงทะเบียนสำเร็จ',
+        text: 'ข้อมูลของคุณถูกบันทึกเรียบร้อยแล้ว',
+        timer: 2000,
+        showConfirmButton: false
+      });
       setForm({ ...form, studentId: '', name: '' });
       
-    } catch (error) {
-      console.error(error);
-      Swal.fire('Error', 'เกิดข้อผิดพลาดในการลงทะเบียน', 'error');
+    } catch (error: any) {
+      Swal.fire('Error', error.message || 'เกิดข้อผิดพลาด', 'error');
     }
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 md:p-10 max-w-lg mx-auto border-t-4 border-nbw-500">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">ลงทะเบียนนักเรียน</h2>
+    <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 max-w-lg mx-auto border-t-4 border-nbw-500">
+      <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <UserPlus className="text-nbw-500" /> ลงทะเบียนนักเรียนใหม่
+      </h2>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัว (5 หลัก)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">เลขประจำตัวนักเรียน (5 หลัก)</label>
           <input
             type="text"
             maxLength={5}
             value={form.studentId}
             onChange={(e) => setForm({ ...form, studentId: e.target.value.replace(/\D/g, '') })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nbw-500 focus:outline-none transition"
+            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nbw-500 outline-none transition-all"
             placeholder="เช่น 12345"
             required
           />
@@ -116,8 +113,8 @@ const RegistrationForm: React.FC = () => {
             type="text"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nbw-500 focus:outline-none transition"
-            placeholder="เด็กชายรักเรียน เพียรศึกษา"
+            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nbw-500 outline-none transition-all"
+            placeholder="ไม่ต้องใส่คำนำหน้า"
             required
           />
         </div>
@@ -127,7 +124,7 @@ const RegistrationForm: React.FC = () => {
             <select
               value={form.room}
               onChange={(e) => setForm({ ...form, room: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nbw-500 focus:outline-none transition"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nbw-500 outline-none"
             >
               {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
@@ -137,7 +134,7 @@ const RegistrationForm: React.FC = () => {
             <select
               value={form.number}
               onChange={(e) => setForm({ ...form, number: Number(e.target.value) })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-nbw-500 focus:outline-none transition"
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-nbw-500 outline-none"
             >
               {NUMBERS.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
@@ -145,11 +142,9 @@ const RegistrationForm: React.FC = () => {
         </div>
         <button
           type="submit"
-          className="w-full bg-gradient-to-r from-nbw-600 to-nbw-500 hover:from-nbw-700 hover:to-nbw-600 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all mt-4"
+          className="w-full bg-nbw-600 hover:bg-nbw-700 text-white font-bold py-3 rounded-lg shadow transition-all mt-4 flex items-center justify-center gap-2"
         >
-          <div className="flex items-center justify-center gap-2">
-            <Save size={20} /> บันทึกข้อมูล
-          </div>
+          <Save size={18} /> บันทึกข้อมูล
         </button>
       </form>
     </div>
@@ -162,18 +157,19 @@ const SubmissionPortal: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (searchId.length !== 5) {
+      Swal.fire('แจ้งเตือน', 'กรุณาระบุรหัสประจำตัว 5 หลัก', 'warning');
+      return;
+    }
     setLoading(true);
     Swal.fire({ title: 'กำลังค้นหา...', didOpen: () => Swal.showLoading() });
 
     try {
-      // Fetch all students (backend aggregates) to find by ID
       const students = await DataService.getStudents();
-      console.log("Fetched Students:", students); // Debugging
-
-      // Force string comparison to handle cases where Sheet returns number
       const found = students.find(s => String(s.studentId).trim() === searchId.trim());
       
       if (found) {
@@ -181,17 +177,10 @@ const SubmissionPortal: React.FC = () => {
         await loadData(found);
         Swal.close();
       } else {
-        Swal.fire({
-            icon: 'warning',
-            title: 'ไม่พบข้อมูล',
-            text: `ไม่พบรหัสนักเรียน: ${searchId} ในระบบ กรุณาลงทะเบียนก่อน`,
-            footer: '<a href="#" onclick="document.querySelector(\'button\').click()">ไปที่หน้าลงทะเบียน</a>'
-        });
-        setStudent(null);
+        Swal.fire('ไม่พบข้อมูล', `ไม่พบรหัสนักเรียน: ${searchId} กรุณาตรวจสอบรหัสหรือลงทะเบียนใหม่`, 'warning');
       }
-    } catch (err) {
-      console.error("Search error:", err);
-      Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อกับฐานข้อมูล', 'error');
+    } catch (err: any) {
+      Swal.fire('Error', 'ไม่สามารถเชื่อมต่อระบบได้', 'error');
     } finally {
       setLoading(false);
     }
@@ -204,10 +193,9 @@ const SubmissionPortal: React.FC = () => {
         DataService.getSubmissions(currentStudent.room)
       ]);
       setAssignments(assignData);
-      // Ensure studentId matching is robust
       setSubmissions(subData.filter(s => String(s.studentId).trim() === String(currentStudent.studentId).trim()));
     } catch (error) {
-      console.error("Load data error:", error);
+      console.error(error);
     }
   };
 
@@ -215,171 +203,172 @@ const SubmissionPortal: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !student) return;
 
-    // Size validation
     if (file.size > 2 * 1024 * 1024) {
       Swal.fire('ขนาดไฟล์เกิน 2MB', 'กรุณาลดขนาดภาพก่อนส่ง', 'warning');
       return;
     }
 
     try {
-      Swal.fire({ title: 'กำลังอัปโหลด...', didOpen: () => Swal.showLoading() });
+      setIsUploading(assignmentId);
+      Swal.fire({ title: 'กำลังอัปโหลด...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
       const base64 = await DataService.fileToBase64(file);
       const submission: Submission = {
-        id: DataService.generateUUID(), // Use safe UUID
+        id: DataService.generateUUID(),
         studentId: student.studentId,
         assignmentId,
-        imageUrl: base64,
+        imageUrl: base64, 
         score: null,
         submittedAt: new Date().toISOString()
       };
       
-      // Pass room to service
       await DataService.submitAssignment(submission, student.room);
       await loadData(student);
       
-      Swal.fire('สำเร็จ', 'ส่งงานเรียบร้อยแล้ว', 'success');
-
-    } catch (error) {
-      console.error(error);
-      Swal.fire('Error', 'เกิดข้อผิดพลาดในการอัปโหลดไฟล์', 'error');
+      Swal.fire({ icon: 'success', title: 'ส่งงานสำเร็จ', timer: 1500, showConfirmButton: false });
+    } catch (error: any) {
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถส่งงานได้', 'error');
+    } finally {
+      setIsUploading(null);
     }
   };
 
-  const getSubmissionStatus = (assignmentId: string) => {
-    return submissions.find(s => s.assignmentId === assignmentId);
+  const showFullImage = (url: string) => {
+    const formattedUrl = DataService.formatDriveUrl(url, 's1000');
+    Swal.fire({
+      html: `
+        <div style="padding: 10px;">
+          <img src="${formattedUrl}" referrerpolicy="no-referrer" style="width: 100%; max-height: 80vh; object-fit: contain; border-radius: 8px;" />
+        </div>
+      `,
+      showConfirmButton: false,
+      showCloseButton: true,
+      width: '90%',
+      background: '#fff',
+    });
   };
 
   if (!student) {
     return (
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md mx-auto text-center border-t-4 border-yellow-400">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">ค้นหาข้อมูลนักเรียน</h3>
-        <form onSubmit={handleSearch} className="flex gap-2">
+      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md mx-auto text-center border-t-4 border-nbw-500">
+        <div className="bg-nbw-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+           <Search className="text-nbw-600" size={32} />
+        </div>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">เข้าสู่ระบบนักเรียน</h3>
+        <p className="text-gray-500 text-sm mb-6">ระบุรหัสประจำตัว 5 หลักเพื่อตรวจสอบงาน</p>
+        <form onSubmit={handleSearch} className="space-y-3">
           <input
             type="text"
             maxLength={5}
             value={searchId}
             onChange={(e) => setSearchId(e.target.value.replace(/\D/g, ''))}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400 focus:outline-none"
-            placeholder="ระบุเลขประจำตัว 5 หลัก"
+            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-nbw-500 outline-none text-center text-2xl font-bold tracking-widest"
+            placeholder="00000"
+            required
           />
-          <button type="submit" disabled={loading} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold transition-colors">
-            <Search size={20} />
+          <button type="submit" disabled={loading} className="w-full bg-nbw-600 hover:bg-nbw-700 text-white py-3 rounded-lg font-bold shadow transition-all flex items-center justify-center gap-2">
+            {loading ? <Loader2 className="animate-spin" /> : <Search size={20} />}
+            เข้าสู่ระบบ
           </button>
         </form>
       </div>
     );
   }
 
-  // Calculate stats
-  const totalAssignments = assignments.length;
-  const submittedCount = submissions.length;
-  const progress = totalAssignments === 0 ? 0 : Math.round((submittedCount / totalAssignments) * 100);
   const totalScore = submissions.reduce((sum, s) => sum + (s.score || 0), 0);
-  const maxTotalScore = assignments.reduce((sum, a) => sum + a.maxScore, 0);
+  const maxScore = assignments.reduce((sum, a) => sum + a.maxScore, 0);
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Profile Header */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col md:flex-row justify-between items-center gap-4 border-l-8 border-nbw-600">
+    <div className="space-y-6">
+      {/* Student Info Card */}
+      <div className="bg-white rounded-2xl shadow p-6 flex flex-col md:flex-row justify-between items-center gap-4 border-l-4 border-nbw-600">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">{student.name}</h2>
-          <p className="text-gray-500">เลขประจำตัว: {student.studentId} | ชั้น: {student.room} | เลขที่: {student.number}</p>
+          <h2 className="text-xl font-bold text-gray-800">{student.name} ({student.room})</h2>
+          <p className="text-gray-500 text-sm">เลขประจำตัว: {student.studentId} | เลขที่: {student.number}</p>
         </div>
-        <div className="text-right">
-          <div className="text-sm text-gray-500">คะแนนสะสม</div>
-          <div className="text-3xl font-bold text-nbw-600">{totalScore} <span className="text-lg text-gray-400">/ {maxTotalScore}</span></div>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="bg-white rounded-xl shadow p-4">
-        <div className="flex justify-between text-sm font-medium mb-1 text-gray-600">
-          <span>ความคืบหน้าการส่งงาน</span>
-          <span>{progress}% ({submittedCount}/{totalAssignments})</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-          <div className="bg-green-500 h-4 rounded-full transition-all duration-1000 ease-out" style={{ width: `${progress}%` }}></div>
+        <div className="bg-nbw-600 text-white px-6 py-3 rounded-xl text-center shadow-md">
+          <div className="text-xs opacity-80 uppercase font-bold">คะแนนรวม</div>
+          <div className="text-2xl font-bold">{totalScore} / {maxScore}</div>
         </div>
       </div>
 
-      {/* Assignment Lists */}
-      <div className="grid md:grid-cols-2 gap-8">
-        <AssignmentSection 
-          title="ก่อนกลางภาค" 
-          assignments={assignments.filter(a => a.term === 'pre-midterm')} 
-          getSub={getSubmissionStatus} 
-          onUpload={handleFileUpload} 
-        />
-        <AssignmentSection 
-          title="หลังกลางภาค" 
-          assignments={assignments.filter(a => a.term === 'post-midterm')} 
-          getSub={getSubmissionStatus} 
-          onUpload={handleFileUpload} 
-        />
-      </div>
-      
-      <div className="flex justify-center mt-4">
-        <button onClick={() => setStudent(null)} className="text-gray-500 underline hover:text-red-500">ออกจากระบบ / ค้นหาใหม่</button>
-      </div>
-    </div>
-  );
-};
-
-const AssignmentSection: React.FC<{
-  title: string;
-  assignments: Assignment[];
-  getSub: (id: string) => Submission | undefined;
-  onUpload: (e: React.ChangeEvent<HTMLInputElement>, id: string) => void;
-}> = ({ title, assignments, getSub, onUpload }) => {
-  return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      <div className="bg-gray-100 px-6 py-3 border-b border-gray-200 font-bold text-gray-700">
-        {title}
-      </div>
-      <div className="divide-y divide-gray-100">
-        {assignments.map(assign => {
-          const submission = getSub(assign.id);
+      {/* Assignment List */}
+      <div className="space-y-4">
+        <h3 className="font-bold text-gray-700 flex items-center gap-2 ml-1">
+          <FileText size={18} className="text-nbw-500" /> รายการภาระงานของคุณ
+        </h3>
+        
+        {assignments.length === 0 ? (
+          <div className="bg-white p-10 rounded-2xl text-center text-gray-400 border border-dashed">ยังไม่มีข้อมูลภาระงานในระบบ</div>
+        ) : assignments.map(assign => {
+          const sub = submissions.find(s => s.assignmentId === assign.id);
+          const isThisUploading = isUploading === assign.id;
+          
           return (
-            <div key={assign.id} className="p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex justify-between items-start mb-2">
-                <div className="font-medium text-gray-800">{assign.title}</div>
-                <div className="text-xs font-bold bg-gray-200 px-2 py-1 rounded text-gray-600">{assign.maxScore} คะแนน</div>
-              </div>
-              
-              <div className="flex items-center justify-between mt-3">
-                <div className="flex items-center gap-2">
-                  {submission ? (
-                    <>
-                      <CheckCircle className="text-green-500" size={20} />
-                      <span className="text-sm font-medium text-green-600">ส่งแล้ว</span>
-                      {submission.score !== null && (
-                         <span className="text-sm font-bold ml-2 bg-green-100 text-green-700 px-2 py-0.5 rounded border border-green-200">
-                           ได้ {submission.score} คะแนน
-                         </span>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="text-red-400" size={20} />
-                      <span className="text-sm text-red-500">ยังไม่ส่ง</span>
-                    </>
-                  )}
+            <div key={assign.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex-grow">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`w-2 h-2 rounded-full ${sub ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                    <h4 className="font-bold text-gray-800">{assign.title}</h4>
+                  </div>
+                  <div className="text-xs text-gray-400 font-medium ml-4">
+                    คะแนนเต็ม {assign.maxScore} | {assign.term === 'pre-midterm' ? 'ก่อนกลางภาค' : 'หลังกลางภาค'}
+                  </div>
                 </div>
 
-                <label className="cursor-pointer bg-white border border-gray-300 hover:border-nbw-500 hover:text-nbw-600 text-gray-600 px-3 py-1.5 rounded-lg text-sm shadow-sm transition-all flex items-center gap-2">
-                  <Upload size={16} />
-                  <span>{submission ? 'ส่งใหม่' : 'อัปโหลด'}</span>
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => onUpload(e, assign.id)} />
-                </label>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  {sub ? (
+                    <div className="flex-grow md:flex-grow-0 flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-100">
+                      <CheckCircle size={16} />
+                      <span className="text-sm font-bold">ส่งแล้ว {sub.score !== null ? `(${sub.score} คะแนน)` : ''}</span>
+                    </div>
+                  ) : (
+                    <div className="flex-grow md:flex-grow-0 flex items-center gap-2 bg-gray-50 text-gray-400 px-3 py-1.5 rounded-lg border border-gray-100">
+                      <XCircle size={16} />
+                      <span className="text-sm font-medium">ยังไม่ส่งงาน</span>
+                    </div>
+                  )}
+
+                  <label className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    isThisUploading ? 'bg-gray-100 text-gray-400' : 'bg-nbw-50 text-nbw-600 hover:bg-nbw-100'
+                  }`}>
+                    {isThisUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                    {sub ? 'ส่งใหม่' : 'ส่งงาน'}
+                    {/* // Fix: Changed 'onUpload' to 'handleFileUpload' to match the function definition at line 191 */}
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, assign.id)} disabled={!!isThisUploading} />
+                  </label>
+                </div>
               </div>
-              {submission?.imageUrl && (
-                 <div className="mt-2">
-                    <img src={submission.imageUrl} alt="preview" className="h-16 w-16 object-cover rounded border" />
-                 </div>
+
+              {sub?.imageUrl && (
+                <div className="bg-gray-50 p-4 border-t border-gray-50 flex items-center gap-4">
+                  <div className="relative group cursor-zoom-in" onClick={() => showFullImage(sub.imageUrl)}>
+                    <img 
+                      src={DataService.formatDriveUrl(sub.imageUrl)} 
+                      referrerPolicy="no-referrer"
+                      className="w-16 h-16 object-cover rounded-lg border bg-white group-hover:opacity-80 transition-opacity" 
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Maximize2 size={16} className="text-nbw-600" />
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    <p className="font-bold text-gray-500">ผลงานล่าสุดของคุณ</p>
+                    <p>ส่งเมื่อ: {new Date(sub.submittedAt).toLocaleString('th-TH')}</p>
+                    <button onClick={() => showFullImage(sub.imageUrl)} className="text-nbw-600 mt-1 hover:underline flex items-center gap-1 font-bold">คลิกเพื่อดูรูปใหญ่</button>
+                  </div>
+                </div>
               )}
             </div>
           );
         })}
+      </div>
+
+      <div className="text-center pt-4">
+        <button onClick={() => setStudent(null)} className="text-gray-400 hover:text-red-500 text-sm font-medium transition-colors">
+          ออกจากระบบ / ค้นหาคนอื่น
+        </button>
       </div>
     </div>
   );
