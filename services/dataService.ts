@@ -5,14 +5,12 @@ import { Student, Assignment, Submission, Announcement, INITIAL_ASSIGNMENTS } fr
 const API_URL = "https://script.google.com/macros/s/AKfycbzUU9cV-wH183mtqy1iNGw-TMDTjS8EIEpyjbLiapdWe-xM6ukkEMQjLN8GfpWZ970jfA/exec";
 
 // ฟังก์ชันสำหรับแปลง URL Google Drive ให้แสดงผลได้
-// size: 'w400' สำหรับพรีวิวทั่วไป, 'w1000' สำหรับดูรูปใหญ่
-export const formatDriveUrl = (url: string, size: string = 'w400'): string => {
+export const formatDriveUrl = (url: string, size: string = 's400'): string => {
   if (!url) return '';
-  if (url.startsWith('data:image')) return url; // ถ้าเป็น Base64 ให้ใช้ตรงๆ
+  if (url.startsWith('data:image')) return url; 
   
   const driveIdMatch = url.match(/id=([a-zA-Z0-9_-]+)/) || url.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (driveIdMatch && driveIdMatch[1]) {
-    // ใช้ thumbnail API ของ Google Drive
     return `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=${size}`;
   }
   return url;
@@ -48,16 +46,10 @@ const apiCall = async (action: string, payload: any = {}): Promise<any> => {
       result = JSON.parse(text);
     } catch (e) {
       console.error("Server raw response:", text);
-      if (text.includes("DriveApp") || text.includes("permission") || text.includes("ไม่ได้รับอนุญาต")) {
-          throw new Error("❌ ตรวจพบปัญหาเรื่องสิทธิ์: กรุณาเข้าไปใน Apps Script แล้วกด Run (เรียกใช้งาน) ฟังก์ชันใดก็ได้หนึ่งครั้ง เพื่อกดยอมรับสิทธิ์ (Allow) เข้าถึง Google Drive แล้วทำการ Deploy ใหม่ครับ");
-      }
-      throw new Error("ระบบตอบกลับไม่เป็น JSON (อาจเกิดจาก Script Error หรือสิทธิ์การเข้าถึง)");
+      throw new Error("ระบบตอบกลับไม่ถูกต้อง กรุณาตรวจสอบสิทธิ์การเข้าถึง (Deploy เป็น Public)");
     }
 
     if (result.status === 'error') {
-        if (result.message.includes("DriveApp") || result.message.includes("permission")) {
-            throw new Error("❌ สิทธิ์การใช้งาน Google Drive ไม่เพียงพอ: กรุณากดเรียกใช้งาน (Run) ในหน้า Apps Script เพื่ออนุญาตสิทธิ์การเข้าถึงข้อมูล");
-        }
         throw new Error(result.message);
     }
     return result.data;
@@ -154,24 +146,28 @@ export const getAnnouncements = async (): Promise<Announcement[]> => {
 
 export const addAnnouncement = async (announcement: Announcement): Promise<void> => {
   const safeAnn = { 
+    id: announcement.id || generateUUID(),
     title: announcement.title,
-    date: announcement.date,
+    date: announcement.date || new Date().toLocaleDateString('th-TH'),
     content: announcement.content,
     imageUrl: announcement.imageUrl || '', 
-    id: announcement.id || generateUUID(),
-    isPinned: !!announcement.isPinned 
+    isPinned: !!announcement.isPinned,
+    isHidden: !!announcement.isHidden
   };
   await apiCall('addAnnouncement', safeAnn);
 };
 
 export const updateAnnouncement = async (announcement: Announcement): Promise<void> => {
+  if (!announcement.id) throw new Error("ID ของประกาศหายไป ไม่สามารถอัปเดตได้");
+  
   const safeAnn = { 
+    id: announcement.id,
     title: announcement.title,
     date: announcement.date,
     content: announcement.content,
     imageUrl: announcement.imageUrl || '',
-    id: announcement.id,
-    isPinned: !!announcement.isPinned
+    isPinned: !!announcement.isPinned,
+    isHidden: !!announcement.isHidden
   };
   await apiCall('updateAnnouncement', safeAnn);
 };
