@@ -1,3 +1,4 @@
+
 export interface Student {
   id: string;
   studentId: string; // 5 digits
@@ -30,6 +31,7 @@ export interface Announcement {
   imageUrl?: string;
   date: string;
   isPinned?: boolean;
+  isHidden?: boolean; // เพิ่มฟิลด์สำหรับซ่อนประกาศ
 }
 
 export const ROOMS = Array.from({ length: 13 }, (_, i) => `ม.5/${i + 1}`);
