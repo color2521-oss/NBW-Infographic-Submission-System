@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Bell, Image as ImageIcon, Plus, X, Maximize2, Pin } from 'lucide-react';
 import { Announcement } from '../types';
@@ -21,13 +22,9 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
   const fetchAnnouncements = async () => {
     try {
       const data = await DataService.getAnnouncements();
-      // Sort: Pinned first, then preserve original order (usually by time added if api returns that way)
       const sortedData = data.sort((a, b) => {
-        // If a is pinned and b is not, a comes first (-1)
         if (a.isPinned && !b.isPinned) return -1;
-        // If b is pinned and a is not, b comes first (1)
         if (!a.isPinned && b.isPinned) return 1;
-        // Otherwise keep original order
         return 0;
       });
       setAnnouncements(sortedData);
@@ -45,7 +42,6 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Basic check for file size (e.g., < 2MB) to prevent Sheet issues
       if (file.size > 2 * 1024 * 1024) {
         Swal.fire('ขนาดไฟล์ใหญ่เกินไป', 'กรุณาเลือกรูปภาพขนาดไม่เกิน 2MB', 'warning');
         return;
@@ -65,12 +61,12 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
     
     try {
       const ann: Announcement = {
-        id: DataService.generateUUID(), // Use safe UUID generator
+        id: DataService.generateUUID(),
         title: newTitle,
         content: newContent,
         imageUrl: newImage || undefined,
         date: new Date().toLocaleDateString('th-TH'),
-        isPinned: false // Default new posts from this simple form as unpinned
+        isPinned: false
       };
       await DataService.addAnnouncement(ann);
       await fetchAnnouncements();
@@ -87,8 +83,11 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
 
   const showFullImage = (url: string) => {
     Swal.fire({
-      imageUrl: url,
+      imageUrl: DataService.formatDriveUrl(url, 'w1000'),
       imageAlt: 'Full size',
+      imageAttributes: {
+        referrerPolicy: 'no-referrer'
+      },
       showConfirmButton: false,
       showCloseButton: true,
       background: 'transparent',
@@ -103,8 +102,6 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
 
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
-      
-      {/* Header / Hero */}
       <div className="text-center py-10 bg-white rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-nbw-500 to-nbw-600"></div>
         <h1 className="text-2xl md:text-3xl font-bold text-nbw-600 mb-2">ระบบส่งงานนักเรียน</h1>
@@ -121,7 +118,6 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
         )}
       </div>
 
-      {/* Admin Form */}
       {isAdmin && showForm && (
         <div className="bg-white p-6 rounded-2xl shadow-xl border border-blue-100 animate-fade-in">
           <div className="flex justify-between items-center mb-4">
@@ -150,14 +146,13 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
                </label>
                {newImage && <span className="text-xs text-green-600 font-bold">เลือกรูปภาพแล้ว</span>}
              </div>
-             {newImage && <img src={newImage} alt="preview" className="h-32 object-cover rounded-lg" />}
+             {newImage && <img src={DataService.formatDriveUrl(newImage)} referrerPolicy="no-referrer" alt="preview" className="h-32 object-cover rounded-lg" />}
              
              <button type="submit" className="w-full bg-nbw-600 text-white py-2 rounded-lg font-bold shadow hover:bg-nbw-700">โพสต์ประกาศ</button>
           </form>
         </div>
       )}
 
-      {/* Loading State */}
       {loading && (
         <div className="text-center py-10">
            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-nbw-600 mx-auto"></div>
@@ -165,7 +160,6 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
         </div>
       )}
 
-      {/* Announcement List */}
       <div className="space-y-6">
         {!loading && announcements.map(ann => (
           <div key={ann.id} className={`bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col md:flex-row group ${ann.isPinned ? 'border-2 border-nbw-200 ring-2 ring-nbw-50' : ''}`}>
@@ -175,7 +169,8 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
                 onClick={() => showFullImage(ann.imageUrl!)}
               >
                 <img 
-                  src={ann.imageUrl} 
+                  src={DataService.formatDriveUrl(ann.imageUrl)} 
+                  referrerPolicy="no-referrer"
                   alt={ann.title} 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
                 />
