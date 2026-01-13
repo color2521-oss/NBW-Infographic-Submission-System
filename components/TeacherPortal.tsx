@@ -257,8 +257,6 @@ const StudentManager: React.FC = () => {
     if (formValues) {
       try {
         Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
-        // If the room changed, we need to handle that on the backend. 
-        // Our service currently uses studentId as the key.
         await DataService.registerStudent({ ...student, ...formValues });
         await fetchStudents();
         Swal.fire({
@@ -304,7 +302,6 @@ const StudentManager: React.FC = () => {
             {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
           <button onClick={fetchStudents} className="p-2 bg-nbw-50 text-nbw-600 rounded-lg hover:bg-nbw-100 transition-colors" title="รีเฟรช">
-             {/* Fix: changed class to className and hyphenated attributes to camelCase in JSX SVG */}
              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
           </button>
         </div>
@@ -491,14 +488,6 @@ const AssignmentManager: React.FC = () => {
           ))}
         </div>
       )}
-      <div className="mt-8 p-5 bg-blue-50/50 rounded-2xl border border-blue-100 text-blue-800 text-sm leading-relaxed">
-        <p className="font-bold mb-2 flex items-center gap-2">
-          {/* Fix: changed class to className and hyphenated attributes to camelCase in JSX SVG */}
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-info"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          คำแนะนำสำหรับครู:
-        </p>
-        <p>คุณสามารถแก้ไขชื่อและคะแนนของงานแต่ละชิ้นได้ที่นี่ เมื่อบันทึกแล้ว ข้อมูลจะถูกดึงไปใช้ในการคำนวณคะแนนรวมและแสดงผลในหน้านักเรียนโดยอัตโนมัติ</p>
-      </div>
     </div>
   );
 };
@@ -518,7 +507,7 @@ const GradingSystem: React.FC = () => {
         DataService.getStudents(room), 
         DataService.getAssignments(), 
         DataService.getSubmissions(room)
-      ]);
+      ]) as [Student[], Assignment[], Submission[]];
       setStudents(s.sort((a,b)=>a.number-b.number)); 
       setAssignments(a); 
       setSubmissions(sub);
@@ -536,7 +525,7 @@ const GradingSystem: React.FC = () => {
     try {
       await Promise.all(Object.entries(tempScores).map(([k, v]) => {
         const [sid, aid] = k.split('::');
-        return DataService.gradeSubmission(sid, aid, v, room);
+        return DataService.gradeSubmission(sid, aid, v as number, room);
       }));
       await fetchData(); 
       setTempScores({}); 
@@ -548,8 +537,11 @@ const GradingSystem: React.FC = () => {
 
   const showFullImage = (url: string) => {
     Swal.fire({
-      imageUrl: url,
+      imageUrl: DataService.formatDriveUrl(url, 'w1000'), // ใช้ w1000 เพื่อความคมชัด
       imageAlt: 'ผลงานนักเรียน',
+      imageAttributes: {
+        referrerPolicy: 'no-referrer' // สำคัญ: เพื่อให้ดึงรูปจาก Google Drive ได้
+      },
       showConfirmButton: false,
       showCloseButton: true,
       background: 'white',
@@ -616,11 +608,11 @@ const GradingSystem: React.FC = () => {
                     return (
                       <td key={a.id} className="p-4 border-l">
                          <div className="flex flex-col items-center gap-3">
-                           {/* ส่วนแสดงรูปภาพที่นักเรียนส่ง */}
                            {sub?.imageUrl ? (
                              <div className="relative group">
                                <img 
-                                 src={sub.imageUrl} 
+                                 src={DataService.formatDriveUrl(sub.imageUrl)} 
+                                 referrerPolicy="no-referrer"
                                  className="h-12 w-12 object-cover rounded shadow-sm border border-gray-200 cursor-pointer hover:scale-110 transition-transform" 
                                  onClick={() => showFullImage(sub.imageUrl)}
                                  title="คลิกเพื่อดูรูปขนาดเต็ม"
@@ -635,7 +627,6 @@ const GradingSystem: React.FC = () => {
                              </div>
                            )}
 
-                           {/* ส่วนกรอกคะแนน */}
                            <div className="flex items-center gap-1">
                              <input 
                                type="number" 
@@ -644,7 +635,7 @@ const GradingSystem: React.FC = () => {
                                className={`w-14 border rounded-lg text-center py-1 font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all ${
                                  tempScores[key] !== undefined ? 'bg-yellow-50 border-yellow-300 text-blue-700' : 'bg-white text-gray-700'
                                }`} 
-                               value={tempScores[key] !== undefined ? tempScores[key] : (sub?.score ?? '')}
+                               value={tempScores[key] !== undefined ? (tempScores[key] as number) : (sub?.score ?? '')}
                                onChange={e => setTempScores({...tempScores, [key]: Number(e.target.value)})}
                                placeholder="-"
                              />
@@ -792,7 +783,7 @@ const AnnouncementManager: React.FC = () => {
           </div>
           {form.imageUrl && (
             <div className="relative inline-block mt-2">
-              <img src={form.imageUrl} className="h-40 rounded-lg border shadow-md object-cover"/>
+              <img src={DataService.formatDriveUrl(form.imageUrl)} referrerPolicy="no-referrer" className="h-40 rounded-lg border shadow-md object-cover"/>
               <button type="button" onClick={()=>setForm({...form, imageUrl:null})} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition">
                 <X size={14}/>
               </button>
@@ -817,7 +808,7 @@ const AnnouncementManager: React.FC = () => {
         ) : announcements.map(a => (
           <div key={a.id} className={`p-4 bg-white rounded-xl border flex gap-4 hover:shadow-md transition ${a.isPinned ? 'ring-2 ring-blue-100 border-blue-200' : 'border-gray-100'}`}>
             {a.imageUrl ? (
-              <img src={a.imageUrl} className="w-24 h-24 object-cover rounded-lg flex-shrink-0 border bg-gray-50"/>
+              <img src={DataService.formatDriveUrl(a.imageUrl)} referrerPolicy="no-referrer" className="w-24 h-24 object-cover rounded-lg flex-shrink-0 border bg-gray-50"/>
             ) : (
               <div className="w-24 h-24 bg-gray-50 rounded-lg flex-shrink-0 border flex items-center justify-center text-gray-300">
                 <ImageIcon size={32} />
@@ -848,7 +839,15 @@ const Dashboard: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    Promise.all([DataService.getStudents(), DataService.getSubmissions(), DataService.getAssignments()]).then(([students, subs, assigns]) => {
+    Promise.all([
+      DataService.getStudents(), 
+      DataService.getSubmissions(), 
+      DataService.getAssignments()
+    ]).then((results) => {
+      const students = results[0] as Student[];
+      const subs = results[1] as Submission[];
+      const assigns = results[2] as Assignment[];
+      
       const stats = ROOMS.map(r => ({
         name: r.split('/')[1],
         total: students.filter(s=>s.room===r).length * assigns.length,
