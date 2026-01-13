@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Bell, Image as ImageIcon, Plus, X, Maximize2, Pin } from 'lucide-react';
+import { Bell, Image as ImageIcon, Plus, X, Maximize2, Pin, EyeOff } from 'lucide-react';
 import { Announcement } from '../types';
 import * as DataService from '../services/dataService';
 import Swal from 'sweetalert2';
@@ -22,7 +22,9 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
   const fetchAnnouncements = async () => {
     try {
       const data = await DataService.getAnnouncements();
-      const sortedData = data.sort((a, b) => {
+      // กรองเฉพาะประกาศที่ไม่ได้ถูกซ่อน
+      const publicData = data.filter(a => !a.isHidden);
+      const sortedData = publicData.sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
         return 0;
@@ -66,7 +68,8 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
         content: newContent,
         imageUrl: newImage || undefined,
         date: new Date().toLocaleDateString('th-TH'),
-        isPinned: false
+        isPinned: false,
+        isHidden: false // ค่าเริ่มต้นเมื่อโพสต์ใหม่
       };
       await DataService.addAnnouncement(ann);
       await fetchAnnouncements();
@@ -82,21 +85,23 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
   };
 
   const showFullImage = (url: string) => {
+    const formattedUrl = DataService.formatDriveUrl(url, 's1000');
     Swal.fire({
-      imageUrl: DataService.formatDriveUrl(url, 'w1000'),
-      imageAlt: 'Full size',
-      imageAttributes: {
-        referrerPolicy: 'no-referrer'
-      },
+      html: `
+        <div style="padding: 10px;">
+          <img 
+            src="${formattedUrl}" 
+            referrerpolicy="no-referrer" 
+            style="width: 100%; max-height: 80vh; object-fit: contain; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);"
+            alt="Full size"
+          />
+        </div>
+      `,
       showConfirmButton: false,
       showCloseButton: true,
       background: 'transparent',
       backdrop: 'rgba(0,0,0,0.9)',
-      customClass: {
-        popup: 'w-auto max-w-full',
-        image: 'max-h-[90vh] object-contain rounded-lg shadow-2xl bg-white'
-      },
-      width: 'auto'
+      width: '95%'
     });
   };
 
