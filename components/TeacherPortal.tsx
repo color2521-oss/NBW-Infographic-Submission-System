@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { 
-  Users, FileEdit, BarChart2, CheckSquare, Save, Trash2, Edit2, Plus, X, Bell, Image as ImageIcon, Pin, FileSpreadsheet, Copy, Maximize2, UserCog, Hash, GraduationCap, EyeOff, Eye, Loader2
+  Users, FileEdit, BarChart2, CheckSquare, Save, Trash2, Edit2, Plus, X, Bell, Image as ImageIcon, Pin, FileSpreadsheet, Copy, Maximize2, UserCog, Hash, GraduationCap, EyeOff, Eye, Loader2, RefreshCw
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as DataService from '../services/dataService';
@@ -75,7 +75,8 @@ const ScoreSummary: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [allStudents, allAssigns, allSubs] = await Promise.all([DataService.getStudents(room), DataService.getAssignments(), DataService.getSubmissions(room)]);
+      const results = await Promise.all([DataService.getStudents(room), DataService.getAssignments(), DataService.getSubmissions(room)]);
+      const [allStudents, allAssigns, allSubs] = results as [Student[], Assignment[], Submission[]];
       setStudents(allStudents.sort((a,b) => a.number - b.number));
       setAssignments(allAssigns);
       setSubmissions(allSubs);
@@ -186,44 +187,24 @@ const StudentManager: React.FC = () => {
       cancelButtonColor: '#94a3b8',
       focusConfirm: false,
       padding: '2rem',
-      customClass: {
-        popup: 'rounded-3xl shadow-2xl',
-        confirmButton: 'rounded-xl font-bold px-8 py-3',
-        cancelButton: 'rounded-xl font-bold px-8 py-3'
-      },
+      customClass: { popup: 'rounded-3xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-8 py-3', cancelButton: 'rounded-xl font-bold px-8 py-3' },
       preConfirm: () => {
         const sid = (document.getElementById('swal-studentId') as HTMLInputElement).value;
         const name = (document.getElementById('swal-name') as HTMLInputElement).value;
         const room = (document.getElementById('swal-room') as HTMLSelectElement).value;
         const num = (document.getElementById('swal-number') as HTMLSelectElement).value;
-        
-        if (!sid || sid.length !== 5) {
-          Swal.showValidationMessage('กรุณาระบุรหัสประจำตัวให้ครบ 5 หลัก');
-          return false;
-        }
-        if (!name.trim()) {
-          Swal.showValidationMessage('กรุณาระบุชื่อ-นามสกุล');
-          return false;
-        }
-        
-        return {
-          studentId: sid,
-          name: name.trim(),
-          room: room,
-          number: Number(num)
-        };
+        if (!sid || sid.length !== 5) { Swal.showValidationMessage('กรุณาระบุรหัสประจำตัวให้ครบ 5 หลัก'); return false; }
+        if (!name.trim()) { Swal.showValidationMessage('กรุณาระบุชื่อ-นามสกุล'); return false; }
+        return { studentId: sid, name: name.trim(), room: room, number: Number(num) };
       }
     });
-
     if (formValues) {
       Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
       try {
         await DataService.registerStudent({ ...student, ...formValues });
         await fetchStudents();
         Swal.fire({ icon: 'success', title: 'อัปเดตข้อมูลนักเรียนเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
-      } catch (err) {
-        Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error');
-      }
+      } catch (err) { Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
     }
   };
 
@@ -254,9 +235,7 @@ const StudentManager: React.FC = () => {
           <select value={filterRoom} onChange={(e) => setFilterRoom(e.target.value)} className="border rounded-lg px-4 py-2 bg-gray-50 focus:ring-2 focus:ring-nbw-500 outline-none font-medium">
             {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
-          <button onClick={fetchStudents} className="p-2 bg-nbw-50 text-nbw-600 rounded-lg hover:bg-nbw-100 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-refresh-cw"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-          </button>
+          <button onClick={fetchStudents} className="p-2 bg-nbw-50 text-nbw-600 rounded-lg hover:bg-nbw-100 transition-colors"><RefreshCw size={20} /></button>
         </div>
       </div>
       {loading ? <div className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 text-nbw-500 mx-auto" /></div> : (
@@ -266,9 +245,7 @@ const StudentManager: React.FC = () => {
               <tr><th className="p-4 w-16 text-center font-bold text-gray-500">เลขที่</th><th className="p-4 w-32 font-bold text-gray-500">รหัสประจำตัว</th><th className="p-4 font-bold text-gray-500">ชื่อ-นามสกุล</th><th className="p-4 w-24 text-center font-bold text-gray-500">ห้อง</th><th className="p-4 w-32 text-right font-bold text-gray-500">จัดการ</th></tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {students.length === 0 ? (
-                <tr><td colSpan={5} className="p-10 text-center text-gray-400">ยังไม่มีข้อมูลนักเรียนในห้องนี้</td></tr>
-              ) : students.sort((a,b)=>a.number-b.number).map(s => (
+              {students.length === 0 ? (<tr><td colSpan={5} className="p-10 text-center text-gray-400">ยังไม่มีข้อมูลนักเรียนในห้องนี้</td></tr>) : students.sort((a,b)=>a.number-b.number).map(s => (
                 <tr key={s.id} className="hover:bg-nbw-50 transition-colors">
                   <td className="p-4 text-center font-bold text-nbw-600">{s.number}</td>
                   <td className="p-4 font-mono text-gray-600">{s.studentId}</td>
@@ -290,10 +267,7 @@ const StudentManager: React.FC = () => {
 
 const AssignmentManager: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const fetchAssignments = async () => {
-    const data = await DataService.getAssignments();
-    setAssignments(data);
-  };
+  const fetchAssignments = async () => { setAssignments(await DataService.getAssignments()); };
   useEffect(() => { fetchAssignments(); }, []);
   const handleEdit = async (assign: Assignment) => {
     const { value: formValues } = await Swal.fire({
@@ -327,57 +301,131 @@ const GradingSystem: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [tempScores, setTempScores] = useState<Record<string, number>>({});
+  const [tempScores, setTempScores] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
   const fetchData = async () => {
-    const [s, a, sub] = await Promise.all([DataService.getStudents(room), DataService.getAssignments(), DataService.getSubmissions(room)]);
-    setStudents(s.sort((a,b)=>a.number-b.number)); setAssignments(a); setSubmissions(sub);
-  };
-  useEffect(() => { fetchData(); }, [room]);
-  const save = async () => {
-    Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading() });
+    setIsLoading(true);
     try {
-      await Promise.all(Object.entries(tempScores).map(([k, v]) => {
-        const [sid, aid] = k.split('::');
-        return DataService.gradeSubmission(sid, aid, v, room);
-      }));
-      await fetchData(); setTempScores({});
-      Swal.fire('สำเร็จ', 'บันทึกคะแนนเรียบร้อยแล้ว', 'success');
-    } catch (err) { Swal.fire('Error', 'ผิดพลาด', 'error'); }
+      const results = await Promise.all([
+        DataService.getStudents(room),
+        DataService.getAssignments(),
+        DataService.getSubmissions(room)
+      ]);
+      const [s, a, sub] = results as [Student[], Assignment[], Submission[]];
+      setStudents(s.sort((a,b)=>a.number-b.number));
+      setAssignments(a);
+      setSubmissions(sub);
+      setTempScores({}); 
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
+  
+  useEffect(() => { fetchData(); }, [room]);
+
+  const save = async () => {
+    const entries = Object.entries(tempScores);
+    if (entries.length === 0) {
+      Swal.fire('ไม่มีข้อมูล', 'คุณยังไม่ได้กรอกคะแนนใหม่', 'info');
+      return;
+    }
+
+    setIsSaving(true);
+    Swal.fire({
+      title: 'กำลังบันทึกคะแนน...',
+      html: `กรุณารอสักครู่ กำลังบันทึกข้อมูล <b>0</b> จาก ${entries.length} รายการ`,
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      let count = 0;
+      for (const [key, value] of entries) {
+        const [sid, aid] = key.split('::');
+        const scoreNum = value === '' ? 0 : Number(value);
+        
+        await DataService.gradeSubmission(sid.trim(), aid.trim(), scoreNum, room);
+        
+        count++;
+        Swal.update({
+          html: `กรุณารอสักครู่ กำลังบันทึกข้อมูล <b>${count}</b> จาก ${entries.length} รายการ`
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+      
+      await fetchData(); 
+      Swal.fire({ icon: 'success', title: 'บันทึกสำเร็จ', text: `บันทึกคะแนนเรียบร้อยแล้ว`, timer: 2000, showConfirmButton: false });
+    } catch (err) {
+      console.error(err);
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกคะแนนได้ กรุณาตรวจสอบการ Deploy ของ Google Script', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold flex items-center gap-2"><CheckSquare className="text-blue-600" /> ตรวจงาน</h3>
-        <div className="flex gap-2">
-          <select value={room} onChange={e=>setRoom(e.target.value)} className="border rounded-lg px-4 py-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none font-medium">{ROOMS.map(r=><option key={r} value={r}>{r}</option>)}</select>
-          <button onClick={save} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold shadow shadow-green-100 transition-all">บันทึกทั้งหมด</button>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2"><CheckSquare className="text-blue-600" /> ตรวจงานและให้คะแนน</h3>
+        <div className="flex gap-2 w-full md:w-auto">
+          <button onClick={fetchData} disabled={isSaving || isLoading} className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"><RefreshCw size={20} className={isLoading ? 'animate-spin' : ''} /></button>
+          <select value={room} disabled={isSaving || isLoading} onChange={e=>setRoom(e.target.value)} className="border rounded-lg px-4 py-2 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none font-medium flex-grow md:flex-grow-0">
+            {ROOMS.map(r=><option key={r} value={r}>{r}</option>)}
+          </select>
+          <button onClick={save} disabled={isSaving || isLoading || Object.keys(tempScores).length === 0} className={`flex-grow md:flex-grow-0 px-6 py-2 rounded-lg font-bold shadow transition-all flex items-center justify-center gap-2 ${isSaving || isLoading || Object.keys(tempScores).length === 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white shadow-green-100'}`}>{isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} บันทึก ({Object.keys(tempScores).length})</button>
         </div>
       </div>
-      <div className="overflow-x-auto border rounded-xl shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100"><tr><th className="p-4 w-16 text-center">เลขที่</th><th className="p-4 min-w-[150px]">ชื่อ-สกุล</th>{assignments.map(a => <th key={a.id} className="p-4 border-l min-w-[100px] text-center">{a.title}</th>)}</tr></thead>
-          <tbody className="divide-y">
-            {students.map(s => (
-              <tr key={s.id} className="hover:bg-gray-50">
-                <td className="p-4 text-center">{s.number}</td>
-                <td className="p-4 font-semibold">{s.name}</td>
-                {assignments.map(a => { 
-                  const sub = submissions.find(x => x.studentId === s.studentId && x.assignmentId === a.id); 
-                  const key = `${s.studentId}::${a.id}`; 
-                  return (
-                    <td key={a.id} className="p-4 border-l text-center">
-                      <div className="flex flex-col items-center gap-2">
-                        {sub?.imageUrl && (<img src={DataService.formatDriveUrl(sub.imageUrl)} className="h-10 w-10 object-cover rounded shadow-sm cursor-pointer hover:scale-110 transition-transform" onClick={() => Swal.fire({ html: `<img src="${DataService.formatDriveUrl(sub.imageUrl, 's1000')}" referrerpolicy="no-referrer" style="width:100%; border-radius:12px;">`, showConfirmButton: false })} />)}
-                        <input type="number" className="w-14 border rounded text-center py-1 text-xs font-bold" value={tempScores[key] !== undefined ? tempScores[key] : (sub?.score ?? '')} onChange={e => setTempScores({...tempScores, [key]: Number(e.target.value)})} placeholder="-" />
-                      </div>
-                    </td>
-                  ); 
-                })}
+      
+      {isLoading ? (
+        <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-blue-500 mb-2" size={32} /><p className="text-gray-400">กำลังโหลดข้อมูล...</p></div>
+      ) : (
+        <div className="overflow-x-auto border rounded-xl shadow-sm bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 text-gray-700">
+              <tr>
+                <th className="p-4 w-16 text-center border-b font-bold">เลขที่</th>
+                <th className="p-4 min-w-[150px] border-b font-bold">ชื่อ-สกุล</th>
+                {assignments.map(a => <th key={a.id} className="p-4 border-l border-b min-w-[100px] text-center font-bold">{a.title}</th>)}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {students.map(s => (
+                <tr key={s.id} className="hover:bg-blue-50/30 transition-colors group">
+                  <td className="p-4 text-center font-bold text-gray-400 group-hover:text-blue-500">{s.number}</td>
+                  <td className="p-4 font-semibold text-gray-800">{s.name}</td>
+                  {assignments.map(a => { 
+                    const sub = submissions.find(x => String(x.studentId).trim() === String(s.studentId).trim() && x.assignmentId === a.id); 
+                    const key = `${s.studentId}::${a.id}`; 
+                    const hasTemp = tempScores[key] !== undefined;
+                    const displayValue = hasTemp ? tempScores[key] : (sub?.score ?? '');
+
+                    return (
+                      <td key={a.id} className={`p-4 border-l text-center transition-colors ${hasTemp ? 'bg-yellow-50/50' : ''}`}>
+                        <div className="flex flex-col items-center gap-2">
+                          {sub?.imageUrl ? (
+                            <div className="relative group/img cursor-pointer" onClick={() => Swal.fire({ html: `<div class="p-2"><img src="${DataService.formatDriveUrl(sub.imageUrl, 's1000')}" referrerpolicy="no-referrer" style="width:100%; border-radius:12px;"></div>`, showConfirmButton: false, showCloseButton: true, width: '80%' })}>
+                              <img src={DataService.formatDriveUrl(sub.imageUrl)} referrerPolicy="no-referrer" className="h-10 w-10 object-cover rounded shadow-sm hover:scale-110 transition-transform border-2 border-white ring-1 ring-gray-200" />
+                              <div className="absolute -top-1 -right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-white"></div>
+                            </div>
+                          ) : (
+                            <div className="h-10 w-10 bg-gray-50 border border-dashed rounded flex items-center justify-center text-gray-200"><ImageIcon size={14} /></div>
+                          )}
+                          <input type="number" className={`w-14 border-2 rounded text-center py-1 text-sm font-bold outline-none focus:ring-4 focus:ring-blue-100 transition-all ${hasTemp ? 'border-yellow-400 bg-yellow-50 text-yellow-700' : 'border-gray-100 bg-white text-gray-700'}`} value={displayValue} onChange={e => setTempScores({...tempScores, [key]: e.target.value})} placeholder="-" min="0" max={a.maxScore} />
+                        </div>
+                      </td>
+                    ); 
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
@@ -466,8 +514,13 @@ const Dashboard: React.FC = () => {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    Promise.all([DataService.getStudents(), DataService.getSubmissions(), DataService.getAssignments()]).then(([students, subs, assigns]) => {
-      setData(ROOMS.map(r => ({ name: r.split('/')[1], total: students.filter(s=>s.room===r).length * (Array.isArray(assigns) ? assigns.length : 0), submitted: subs.filter(sub => students.filter(s=>s.room===r).some(s=>s.studentId===sub.studentId)).length })));
+    Promise.all([DataService.getStudents(), DataService.getSubmissions(), DataService.getAssignments()]).then((results) => {
+      const [students, subs, assigns] = results as [Student[], Submission[], Assignment[]];
+      setData(ROOMS.map(r => ({ 
+        name: r.split('/')[1], 
+        total: students.filter(s=>s.room===r).length * (Array.isArray(assigns) ? assigns.length : 0), 
+        submitted: subs.filter(sub => students.filter(s=>s.room===r).some(s=>s.studentId===sub.studentId)).length 
+      })));
       setLoading(false);
     });
   }, []);
