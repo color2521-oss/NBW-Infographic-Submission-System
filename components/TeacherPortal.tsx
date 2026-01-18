@@ -451,6 +451,30 @@ const AnnouncementManager: React.FC = () => {
   };
   useEffect(() => { fetchAnnouncements(); }, []);
 
+  // ฟังก์ชันสำหรับตรวจจับลิงก์
+  const renderTextWithLinks = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-nbw-600 underline hover:text-nbw-800 break-all transition-colors"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title.trim() || !form.content.trim()) return;
@@ -500,7 +524,9 @@ const AnnouncementManager: React.FC = () => {
               <div className="p-4 flex-grow min-w-0">
                 <div className="flex justify-between items-start gap-2 mb-1"><h4 className={`font-bold truncate flex items-center gap-1.5 ${isHidden ? 'text-gray-400' : 'text-gray-800'}`}>{isPinned && <Pin size={14} fill="currentColor" className="text-nbw-500"/>}{isHidden && <EyeOff size={14} className="text-red-400"/>} {a.title}</h4><div className="flex gap-1"><button onClick={()=>edit(a)} className="text-blue-500 p-1.5 hover:bg-blue-50 rounded-lg transition-all" title="แก้ไข"><Edit2 size={16}/></button><button onClick={async ()=>{ if((await Swal.fire({title:'ลบประกาศ?', text: 'คุณต้องการลบประกาศนี้ใช่หรือไม่', icon:'warning', showCancelButton:true, confirmButtonColor: '#ef4444'})).isConfirmed) { await DataService.deleteAnnouncement(a.id); fetchAnnouncements(); } }} className="text-red-400 p-1.5 hover:bg-red-50 rounded-lg transition-all" title="ลบ"><Trash2 size={16}/></button></div></div>
                 <p className="text-[10px] font-black text-nbw-600 uppercase tracking-widest mb-1">{a.date} {isHidden && <span className="text-red-500 ml-2">(ซ่อนอยู่)</span>}</p>
-                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{a.content}</p>
+                <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
+                  {renderTextWithLinks(a.content)}
+                </p>
               </div>
             </div>
           );
