@@ -23,10 +23,8 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
       setLoading(true);
       const data = await DataService.getAnnouncements();
       
-      // กรองประกาศ: เฉพาะที่ "ไม่ถูกซ่อน" (isHidden = false)
       const publicData = data.filter(a => !DataService.parseBool(a.isHidden));
 
-      // เรียงลำดับ: ปักหมุดขึ้นก่อน
       const sortedData = publicData.sort((a, b) => {
         const aPinned = DataService.parseBool(a.isPinned);
         const bPinned = DataService.parseBool(b.isPinned);
@@ -45,6 +43,30 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
   useEffect(() => {
     fetchAnnouncements();
   }, []);
+
+  // ฟังก์ชันสำหรับจัดการลิงก์ในข้อความ
+  const renderTextWithLinks = (text: string) => {
+    if (!text) return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, i) => {
+      if (part.match(urlRegex)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-nbw-600 underline hover:text-nbw-800 break-all transition-colors"
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -153,7 +175,9 @@ export const Home: React.FC<HomeProps> = ({ isAdmin }) => {
                   <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">{ann.title}</h2>
                   <span className="text-xs font-medium bg-nbw-50 text-nbw-600 px-3 py-1 rounded-full whitespace-nowrap w-fit border border-nbw-100">{ann.date}</span>
                 </div>
-                <p className="text-gray-600 whitespace-pre-line leading-relaxed text-sm md:text-base">{ann.content}</p>
+                <p className="text-gray-600 whitespace-pre-line leading-relaxed text-sm md:text-base">
+                  {renderTextWithLinks(ann.content)}
+                </p>
               </div>
             </div>
           );
