@@ -267,31 +267,116 @@ const StudentManager: React.FC = () => {
 
 const AssignmentManager: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const fetchAssignments = async () => { setAssignments(await DataService.getAssignments()); };
-  useEffect(() => { fetchAssignments(); }, []);
-  const handleEdit = async (assign: Assignment) => {
-    const { value: formValues } = await Swal.fire({
-      title: 'แก้ไขภาระงาน',
-      html: `<input id="swal-title" class="swal2-input" value="${assign.title}"><input id="swal-score" type="number" class="swal2-input" value="${assign.maxScore}">`,
-      showCancelButton: true,
-      preConfirm: () => ({ title: (document.getElementById('swal-title') as HTMLInputElement).value, maxScore: Number((document.getElementById('swal-score') as HTMLInputElement).value) })
-    });
-    if (formValues) { await DataService.updateAssignment({ ...assign, ...formValues }); fetchAssignments(); }
+  const [loading, setLoading] = useState(true);
+
+  const fetchAssignments = async () => {
+    setLoading(true);
+    try {
+      const data = await DataService.getAssignments();
+      setAssignments(data);
+    } catch (err) { console.error(err); } finally { setLoading(false); }
   };
-  return (
-    <div className="grid gap-4">
-      {assignments.map(a => (
-        <div key={a.id} className="p-5 border rounded-2xl flex justify-between items-center bg-white shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center gap-5">
-            <div className="w-12 h-12 rounded-2xl bg-nbw-50 flex items-center justify-center text-nbw-600 font-bold text-lg">{a.order}</div>
+
+  useEffect(() => { fetchAssignments(); }, []);
+
+  const handleEdit = async (assign?: Assignment) => {
+    const isNew = !assign;
+    const { value: formValues } = await Swal.fire({
+      title: `<h3 class="text-xl font-bold text-nbw-600">${isNew ? 'เพิ่มภาระงานใหม่' : 'แก้ไขภาระงาน'}</h3>`,
+      html: `
+        <div class="text-left space-y-4 p-2">
+          <div>
+            <label class="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1 tracking-wider">ชื่อภาระงาน</label>
+            <input id="swal-title" class="w-full border-2 rounded-xl px-4 py-2 focus:border-nbw-500 outline-none transition-all font-medium" value="${assign?.title || ''}" placeholder="ระบุชื่อผลงาน">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
             <div>
-              <div className="font-bold text-gray-800 text-lg">{a.title}</div>
-              <div className="text-sm text-gray-400 font-medium">คะแนนเต็ม {a.maxScore} | {a.term}</div>
+              <label class="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1 tracking-wider">คะแนนเต็ม</label>
+              <input id="swal-score" type="number" class="w-full border-2 rounded-xl px-4 py-2 focus:border-nbw-500 outline-none transition-all font-bold" value="${assign?.maxScore || 10}" placeholder="คะแนน">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1 tracking-wider">ลำดับที่</label>
+              <input id="swal-order" type="number" class="w-full border-2 rounded-xl px-4 py-2 focus:border-nbw-500 outline-none transition-all font-bold" value="${assign?.order || (assignments.length + 1)}" placeholder="ลำดับ">
             </div>
           </div>
-          <button onClick={() => handleEdit(a)} className="p-3 text-gray-400 hover:text-nbw-600 hover:bg-nbw-100 rounded-2xl transition-all"><Edit2 size={20} /></button>
+          <div>
+            <label class="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1 tracking-wider">ภาคเรียน</label>
+            <select id="swal-term" class="w-full border-2 rounded-xl px-4 py-2 focus:border-nbw-500 outline-none transition-all font-medium">
+              <option value="pre-midterm" ${assign?.term === 'pre-midterm' ? 'selected' : ''}>ก่อนกลางภาค</option>
+              <option value="post-midterm" ${assign?.term === 'post-midterm' ? 'selected' : ''}>หลังกลางภาค</option>
+            </select>
+          </div>
         </div>
-      ))}
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'บันทึกข้อมูล',
+      cancelButtonText: 'ยกเลิก',
+      confirmButtonColor: '#0284c7',
+      focusConfirm: false,
+      padding: '2rem',
+      customClass: { popup: 'rounded-3xl shadow-2xl', confirmButton: 'rounded-xl font-bold px-8 py-3', cancelButton: 'rounded-xl font-bold px-8 py-3' },
+      preConfirm: () => {
+        const title = (document.getElementById('swal-title') as HTMLInputElement).value;
+        const score = (document.getElementById('swal-score') as HTMLInputElement).value;
+        const term = (document.getElementById('swal-term') as HTMLSelectElement).value;
+        const order = (document.getElementById('swal-order') as HTMLInputElement).value;
+        if (!title.trim()) { Swal.showValidationMessage('กรุณาระบุชื่อภาระงาน'); return false; }
+        return { 
+          title: title.trim(), 
+          maxScore: Number(score), 
+          term: term as 'pre-midterm' | 'post-midterm', 
+          order: Number(order),
+          id: assign?.id || DataService.generateUUID()
+        };
+      }
+    });
+
+    if (formValues) {
+      Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+      try {
+        await DataService.updateAssignment(formValues);
+        await fetchAssignments();
+        Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'บันทึกภาระงานเรียบร้อยแล้ว', timer: 1500, showConfirmButton: false });
+      } catch (err) { Swal.fire('Error', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold flex items-center gap-2"><FileEdit className="text-nbw-600" /> จัดการภาระงาน</h3>
+        <button onClick={() => handleEdit()} className="bg-nbw-600 hover:bg-nbw-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all transform active:scale-95">
+          <Plus size={18} /> เพิ่มภาระงานใหม่
+        </button>
+      </div>
+
+      {loading ? <div className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 text-nbw-500 mx-auto" /></div> : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {assignments.map(a => (
+            <div key={a.id} className="p-5 border-2 border-gray-100 rounded-2xl flex flex-col justify-between bg-white shadow-sm hover:shadow-md transition-all hover:border-nbw-100 group relative">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-10 h-10 rounded-xl bg-nbw-50 flex items-center justify-center text-nbw-600 font-bold border border-nbw-100">{a.order}</div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => handleEdit(a)} className="p-2 text-gray-400 hover:text-nbw-600 hover:bg-nbw-50 rounded-lg transition-all" title="แก้ไข"><Edit2 size={16} /></button>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-800 text-lg mb-1 line-clamp-1">{a.title}</h4>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${a.term === 'pre-midterm' ? 'bg-orange-50 text-orange-600' : 'bg-purple-50 text-purple-600'}`}>
+                    {a.term === 'pre-midterm' ? 'ก่อนกลางภาค' : 'หลังกลางภาค'}
+                  </span>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 flex justify-between items-center">
+                  <span className="text-sm text-gray-400 font-medium">คะแนนเต็ม</span>
+                  <span className="text-lg font-black text-nbw-600">{a.maxScore}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+          {assignments.length === 0 && <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl text-gray-400 font-medium">ยังไม่มีภาระงานในระบบ</div>}
+        </div>
+      )}
     </div>
   );
 };
