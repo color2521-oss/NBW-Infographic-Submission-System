@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { Search, Upload, CheckCircle, XCircle, Save, UserPlus, FileText, Loader2, Maximize2, Image as ImageIcon } from 'lucide-react';
@@ -222,7 +221,17 @@ const SubmissionPortal: React.FC = () => {
         submittedAt: new Date().toISOString()
       };
       
+      // ส่งข้อมูลไปยัง Server
       await DataService.submitAssignment(submission, student.room);
+      
+      // อัปเดต State ทันทีเพื่อให้แสดงรูปตัวอย่างใหม่ (Optimistic Update)
+      setSubmissions(prev => {
+        // กรองเอาตัวเก่าออก และเพิ่มตัวใหม่เข้าไป
+        const filtered = prev.filter(s => s.assignmentId !== assignmentId);
+        return [...filtered, submission];
+      });
+
+      // โหลดข้อมูลทั้งหมดใหม่อีกครั้งเพื่อความถูกต้อง (เช่น ได้ลิงก์ Google Drive จาก Server)
       await loadData(student);
       
       Swal.fire({ icon: 'success', title: 'ส่งงานสำเร็จ', timer: 1500, showConfirmButton: false });
@@ -301,7 +310,8 @@ const SubmissionPortal: React.FC = () => {
         {assignments.length === 0 ? (
           <div className="bg-white p-10 rounded-2xl text-center text-gray-400 border border-dashed">ยังไม่มีข้อมูลภาระงานในระบบ</div>
         ) : assignments.map(assign => {
-          const sub = submissions.find(s => s.assignmentId === assign.id);
+          // ดึงผลงานชิ้นล่าสุดที่ส่ง (ในกรณีที่ในชีทมีข้อมูลซ้ำกัน จะแสดงตัวที่ใหม่ที่สุด)
+          const sub = [...submissions].reverse().find(s => s.assignmentId === assign.id);
           const isThisUploading = isUploading === assign.id;
           
           return (
@@ -335,7 +345,6 @@ const SubmissionPortal: React.FC = () => {
                   }`}>
                     {isThisUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                     {sub ? 'ส่งใหม่' : 'ส่งงาน'}
-                    {/* // Fix: Changed 'onUpload' to 'handleFileUpload' to match the function definition at line 191 */}
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, assign.id)} disabled={!!isThisUploading} />
                   </label>
                 </div>
