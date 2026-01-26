@@ -79,7 +79,8 @@ const ScoreSummary: React.FC = () => {
       const [allStudents, allAssigns, allSubs] = results as [Student[], Assignment[], Submission[]];
       setStudents(allStudents.sort((a,b) => a.number - b.number));
       setAssignments(allAssigns);
-      setSubmissions(allSubs);
+      // กลับลำดับข้อมูลเพื่อให้ .find() เจอตัวล่าสุดก่อน (สำหรับกรณีที่มีข้อมูลซ้ำใน Google Sheet)
+      setSubmissions([...allSubs].reverse());
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
   useEffect(() => { fetchData(); }, [room]);
@@ -401,7 +402,8 @@ const GradingSystem: React.FC = () => {
       const [s, a, sub] = results as [Student[], Assignment[], Submission[]];
       setStudents(s.sort((a,b)=>a.number-b.number));
       setAssignments(a);
-      setSubmissions(sub);
+      // กลับลำดับข้อมูลเพื่อให้ .find() เจอตัวล่าสุดก่อน (สำหรับกรณีที่นักเรียนส่งงานซ้ำ)
+      setSubmissions([...sub].reverse());
       setTempScores({}); 
     } catch (err) {
       console.error(err);
