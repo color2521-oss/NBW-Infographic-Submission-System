@@ -518,9 +518,16 @@ const GradingSystem: React.FC = () => {
                       <td key={a.id} className={`p-4 border-l text-center transition-colors ${hasTemp ? 'bg-yellow-50/50' : ''}`}>
                         <div className="flex flex-col items-center gap-2">
                           {sub?.imageUrl ? (
-                            <div className="relative group/img cursor-pointer" onClick={() => Swal.fire({ html: `<div class="p-2"><img src="${DataService.formatDriveUrl(sub.imageUrl, 's1000')}" referrerpolicy="no-referrer" style="width:100%; border-radius:12px;"></div>`, showConfirmButton: false, showCloseButton: true, width: '80%' })}>
-                              <img src={DataService.formatDriveUrl(sub.imageUrl)} referrerPolicy="no-referrer" className="h-10 w-10 object-cover rounded shadow-sm hover:scale-110 transition-transform border-2 border-white ring-1 ring-gray-200" />
-                              <div className="absolute -top-1 -right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-white"></div>
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="relative group/img cursor-pointer" onClick={() => Swal.fire({ html: `<div class="p-2"><img src="${DataService.formatDriveUrl(sub.imageUrl, 's1000')}" referrerpolicy="no-referrer" style="width:100%; border-radius:12px;"></div>`, showConfirmButton: false, showCloseButton: true, width: '80%' })}>
+                                <img src={DataService.formatDriveUrl(sub.imageUrl)} referrerPolicy="no-referrer" className="h-10 w-10 object-cover rounded shadow-sm hover:scale-110 transition-transform border-2 border-white ring-1 ring-gray-200" />
+                                <div className="absolute -top-1 -right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-white"></div>
+                              </div>
+                              {sub.submittedAt && (
+                                <span className="text-[9px] text-gray-400 font-bold leading-none">
+                                  {new Date(sub.submittedAt).toLocaleDateString('en-GB')}
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <div className="h-10 w-10 bg-gray-50 border border-dashed rounded flex items-center justify-center text-gray-200"><ImageIcon size={14} /></div>
