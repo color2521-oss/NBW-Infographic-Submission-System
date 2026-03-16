@@ -7,9 +7,31 @@ import * as DataService from '../services/dataService';
 
 export const StudentPortal: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'register' | 'submit'>('register');
+  const [isSystemOpen, setIsSystemOpen] = useState(true);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      const status = await DataService.getSystemStatus();
+      setIsSystemOpen(status);
+      setIsCheckingStatus(false);
+    };
+    checkStatus();
+  }, []);
 
   return (
     <div className="max-w-5xl mx-auto p-4">
+      {!isSystemOpen && !isCheckingStatus && (
+        <div className="mb-6 bg-red-50 border-2 border-red-100 p-4 rounded-2xl flex items-center gap-4 animate-pulse">
+          <div className="bg-red-500 text-white p-2 rounded-full">
+            <XCircle size={24} />
+          </div>
+          <div>
+            <h4 className="font-bold text-red-600">ขณะนี้ระบบปิดรับการส่งงานแล้ว</h4>
+            <p className="text-red-500 text-sm">คุณยังสามารถดูคะแนนได้ แต่จะไม่สามารถลงทะเบียนหรือส่งงานใหม่ได้</p>
+          </div>
+        </div>
+      )}
       <div className="flex justify-center mb-8">
         <div className="bg-white p-1 rounded-xl shadow-sm border flex gap-1">
           <button
@@ -32,13 +54,13 @@ export const StudentPortal: React.FC = () => {
       </div>
 
       <div className="animate-fade-in">
-        {activeTab === 'register' ? <RegistrationForm /> : <SubmissionPortal />}
+        {activeTab === 'register' ? <RegistrationForm isSystemOpen={isSystemOpen} /> : <SubmissionPortal isSystemOpen={isSystemOpen} />}
       </div>
     </div>
   );
 };
 
-const RegistrationForm: React.FC = () => {
+const RegistrationForm: React.FC<{ isSystemOpen: boolean }> = ({ isSystemOpen }) => {
   const [form, setForm] = useState<Student>({
     id: '',
     studentId: '',
@@ -49,6 +71,14 @@ const RegistrationForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // ตรวจสอบสถานะระบบก่อน
+    const isOpen = await DataService.getSystemStatus();
+    if (!isOpen) {
+      Swal.fire('ระบบปิดแล้ว', 'ขออภัย ขณะนี้ระบบปิดรับการลงทะเบียนนักเรียนใหม่แล้ว', 'warning');
+      return;
+    }
+
     if (form.studentId.length !== 5) {
       Swal.fire('ข้อผิดพลาด', 'รหัสนักเรียนต้องมี 5 หลัก', 'error');
       return;
@@ -141,7 +171,10 @@ const RegistrationForm: React.FC = () => {
         </div>
         <button
           type="submit"
-          className="w-full bg-nbw-600 hover:bg-nbw-700 text-white font-bold py-3 rounded-lg shadow transition-all mt-4 flex items-center justify-center gap-2"
+          disabled={!isSystemOpen}
+          className={`w-full font-bold py-3 rounded-lg shadow transition-all mt-4 flex items-center justify-center gap-2 ${
+            !isSystemOpen ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-nbw-600 hover:bg-nbw-700 text-white'
+          }`}
         >
           <Save size={18} /> บันทึกข้อมูล
         </button>
@@ -150,7 +183,7 @@ const RegistrationForm: React.FC = () => {
   );
 };
 
-const SubmissionPortal: React.FC = () => {
+const SubmissionPortal: React.FC<{ isSystemOpen: boolean }> = ({ isSystemOpen }) => {
   const [searchId, setSearchId] = useState('');
   const [student, setStudent] = useState<Student | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -209,6 +242,15 @@ const SubmissionPortal: React.FC = () => {
 
     try {
       setIsUploading(assignmentId);
+      
+      // ตรวจสอบสถานะระบบก่อนส่ง
+      const isOpen = await DataService.getSystemStatus();
+      if (!isOpen) {
+        Swal.fire('ระบบปิดแล้ว', 'ขออภัย ขณะนี้ระบบปิดรับการส่งงานแล้ว ไม่สามารถส่งงานเพิ่มได้', 'warning');
+        setIsUploading(null);
+        return;
+      }
+
       Swal.fire({ title: 'กำลังอัปโหลด...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
       // ค้นหาการส่งงานเดิมใน State ปัจจุบัน
@@ -343,12 +385,14 @@ const SubmissionPortal: React.FC = () => {
                     </div>
                   )}
 
-                  <label className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
-                    isThisUploading ? 'bg-gray-100 text-gray-400' : 'bg-nbw-50 text-nbw-600 hover:bg-nbw-100'
+                  <label className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    isThisUploading || !isSystemOpen ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-nbw-50 text-nbw-600 hover:bg-nbw-100 cursor-pointer'
                   }`}>
                     {isThisUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                     {sub ? 'ส่งใหม่' : 'ส่งงาน'}
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, assign.id)} disabled={!!isThisUploading} />
+                    {!isThisUploading && isSystemOpen && (
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, assign.id)} />
+                    )}
                   </label>
                 </div>
               </div>
