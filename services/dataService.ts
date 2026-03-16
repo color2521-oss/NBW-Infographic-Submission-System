@@ -108,6 +108,20 @@ export const updateAnnouncement = async (announcement: Announcement): Promise<vo
 
 export const deleteAnnouncement = async (id: string): Promise<void> => await apiCall('deleteAnnouncement', { id });
 
+export const getSystemStatus = async (): Promise<boolean> => {
+  try {
+    const settings = await apiCall('getSettings');
+    const status = settings.find((s: any) => s.id === 'system_status');
+    return status ? status.value === 'open' : true; // Default to open if not found
+  } catch (error) {
+    return true;
+  }
+};
+
+export const updateSystemStatus = async (isOpen: boolean): Promise<void> => {
+  await apiCall('updateSettings', { id: 'system_status', value: isOpen ? 'open' : 'closed' });
+};
+
 export const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
