@@ -490,13 +490,13 @@ const GradingSystem: React.FC = () => {
       {isLoading ? (
         <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-blue-500 mb-2" size={32} /><p className="text-gray-400">กำลังโหลดข้อมูล...</p></div>
       ) : (
-        <div className="overflow-x-auto border rounded-xl shadow-sm bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 text-gray-700">
+        <div className="overflow-x-auto border rounded-xl shadow-sm bg-white max-h-[70vh] overflow-y-auto">
+          <table className="w-full text-sm border-separate border-spacing-0">
+            <thead className="bg-gray-100 text-gray-700 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="p-4 w-16 text-center border-b font-bold">เลขที่</th>
-                <th className="p-4 min-w-[150px] border-b font-bold">ชื่อ-สกุล</th>
-                {assignments.map(a => <th key={a.id} className="p-4 border-l border-b min-w-[100px] text-center font-bold">{a.title}</th>)}
+                <th className="p-4 w-16 text-center border-b font-bold bg-gray-100">เลขที่</th>
+                <th className="p-4 min-w-[150px] border-b font-bold bg-gray-100">ชื่อ-สกุล</th>
+                {assignments.map(a => <th key={a.id} className="p-4 border-l border-b min-w-[100px] text-center font-bold bg-gray-100">{a.title}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
