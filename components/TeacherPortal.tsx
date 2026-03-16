@@ -8,6 +8,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import * as DataService from '../services/dataService';
 import { Student, Assignment, Submission, ROOMS, NUMBERS, Announcement } from '../types';
 
+// Helper function สำหรับเตรียมรหัสนักเรียนให้เป็นรูปแบบ 5 หลักที่ถูกต้องเสมอ
+const normalizeStudentId = (id: any): string => {
+  return String(id || '').trim().padStart(5, '0');
+};
+
 export const TeacherPortal: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
@@ -48,6 +53,7 @@ export const TeacherPortal: React.FC = () => {
            { id: 'grading', label: 'ตรวจงาน', icon: CheckSquare },
            { id: 'summary', label: 'สรุปคะแนนรายห้อง', icon: FileSpreadsheet },
            { id: 'announcements', label: 'จัดการประกาศ', icon: Bell },
+           { id: 'settings', label: 'ตั้งค่าระบบ', icon: UserCog },
          ].map(tab => (
            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab.id ? 'bg-nbw-900 text-white shadow-lg transform scale-105' : 'text-gray-600 hover:bg-gray-100'}`}>
              <tab.icon size={16} /> {tab.label}
@@ -61,6 +67,7 @@ export const TeacherPortal: React.FC = () => {
         {activeTab === 'grading' && <GradingSystem />}
         {activeTab === 'summary' && <ScoreSummary />}
         {activeTab === 'announcements' && <AnnouncementManager />}
+        {activeTab === 'settings' && <SystemSettingsManager />}
       </div>
     </div>
   );
@@ -72,6 +79,7 @@ const ScoreSummary: React.FC = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -79,18 +87,24 @@ const ScoreSummary: React.FC = () => {
       const [allStudents, allAssigns, allSubs] = results as [Student[], Assignment[], Submission[]];
       setStudents(allStudents.sort((a,b) => a.number - b.number));
       setAssignments(allAssigns);
-      // กลับลำดับข้อมูลเพื่อให้ .find() เจอตัวล่าสุดก่อน (สำหรับกรณีที่มีข้อมูลซ้ำใน Google Sheet)
       setSubmissions([...allSubs].reverse());
     } catch (error) { console.error(error); } finally { setLoading(false); }
   };
+
   useEffect(() => { fetchData(); }, [room]);
+
   const copyColumnScores = (assignmentId: string, title: string) => {
     const scores = students.map(std => {
-      const sub = submissions.find(s => s.studentId === std.studentId && s.assignmentId === assignmentId);
+      // ใช้ normalizeStudentId เพื่อให้การค้นหาแม่นยำที่สุด
+      const sub = submissions.find(s => 
+        normalizeStudentId(s.studentId) === normalizeStudentId(std.studentId) && 
+        String(s.assignmentId).trim() === String(assignmentId).trim()
+      );
       return sub?.score !== null && sub?.score !== undefined ? sub.score : ''; 
     }).join('\n');
     navigator.clipboard.writeText(scores).then(() => Swal.fire({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, icon: 'success', title: `คัดลอกคะแนนเรียบร้อย` }));
   };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -108,7 +122,10 @@ const ScoreSummary: React.FC = () => {
                 <th className="px-4 py-4 w-48 border-b">ชื่อ-สกุล</th>
                 {assignments.map(a => (
                   <th key={a.id} className="px-2 py-2 text-center border-l border-b min-w-[120px]">
-                    <div className="flex flex-col items-center"><span className="truncate w-full font-bold">{a.title}</span><button onClick={() => copyColumnScores(a.id, a.title)} className="mt-1 bg-white border px-2 py-0.5 rounded text-xs hover:bg-green-50">Copy</button></div>
+                    <div className="flex flex-col items-center">
+                      <span className="truncate w-full font-bold">{a.title}</span>
+                      <button onClick={() => copyColumnScores(a.id, a.title)} className="mt-1 bg-white border px-2 py-0.5 rounded text-xs hover:bg-green-50">Copy</button>
+                    </div>
                   </th>
                 ))}
                 <th className="px-4 py-4 w-24 text-center border-l border-b font-bold">รวม</th>
@@ -122,7 +139,10 @@ const ScoreSummary: React.FC = () => {
                     <td className="px-4 py-3 text-center">{std.number}</td>
                     <td className="px-4 py-3 font-medium text-gray-900">{std.name}</td>
                     {assignments.map(assign => {
-                      const sub = submissions.find(s => s.studentId === std.studentId && s.assignmentId === assign.id);
+                      const sub = submissions.find(s => 
+                        normalizeStudentId(s.studentId) === normalizeStudentId(std.studentId) && 
+                        String(s.assignmentId).trim() === String(assign.id).trim()
+                      );
                       if (typeof sub?.score === 'number') total += sub.score;
                       return <td key={assign.id} className="px-2 py-3 text-center border-l">{sub?.score ?? '-'}</td>;
                     })}
@@ -402,7 +422,6 @@ const GradingSystem: React.FC = () => {
       const [s, a, sub] = results as [Student[], Assignment[], Submission[]];
       setStudents(s.sort((a,b)=>a.number-b.number));
       setAssignments(a);
-      // กลับลำดับข้อมูลเพื่อให้ .find() เจอตัวล่าสุดก่อน (สำหรับกรณีที่นักเรียนส่งงานซ้ำ)
       setSubmissions([...sub].reverse());
       setTempScores({}); 
     } catch (err) {
@@ -486,7 +505,11 @@ const GradingSystem: React.FC = () => {
                   <td className="p-4 text-center font-bold text-gray-400 group-hover:text-blue-500">{s.number}</td>
                   <td className="p-4 font-semibold text-gray-800">{s.name}</td>
                   {assignments.map(a => { 
-                    const sub = submissions.find(x => String(x.studentId).trim() === String(s.studentId).trim() && x.assignmentId === a.id); 
+                    // ใช้ normalizeStudentId เพื่อแก้ไขปัญหา Matching รหัสนักเรียนที่มีเลข 0 นำหน้า
+                    const sub = submissions.find(x => 
+                      normalizeStudentId(x.studentId) === normalizeStudentId(s.studentId) && 
+                      String(x.assignmentId).trim() === String(a.id).trim()
+                    ); 
                     const key = `${s.studentId}::${a.id}`; 
                     const hasTemp = tempScores[key] !== undefined;
                     const displayValue = hasTemp ? tempScores[key] : (sub?.score ?? '');
@@ -538,7 +561,6 @@ const AnnouncementManager: React.FC = () => {
   };
   useEffect(() => { fetchAnnouncements(); }, []);
 
-  // ฟังก์ชันสำหรับตรวจจับลิงก์
   const renderTextWithLinks = (text: string) => {
     if (!text) return null;
     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -632,7 +654,7 @@ const Dashboard: React.FC = () => {
       setData(ROOMS.map(r => ({ 
         name: r.split('/')[1], 
         total: students.filter(s=>s.room===r).length * (Array.isArray(assigns) ? assigns.length : 0), 
-        submitted: subs.filter(sub => students.filter(s=>s.room===r).some(s=>s.studentId===sub.studentId)).length 
+        submitted: subs.filter(sub => students.filter(s=>s.room===r).some(s=>normalizeStudentId(s.studentId)===normalizeStudentId(sub.studentId))).length 
       })));
       setLoading(false);
     });
@@ -644,3 +666,92 @@ const Dashboard: React.FC = () => {
     <div className="h-80 w-full"><h3 className="text-xl font-bold mb-6 text-gray-800">สรุปการส่งงานรวมทุกห้อง</h3><ResponsiveContainer width="100%" height="100%"><BarChart data={data}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="name" /><YAxis /><Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} /><Legend /><Bar dataKey="total" name="จำนวนที่ต้องส่ง" fill="#e5e7eb" radius={[4, 4, 0, 0]} /><Bar dataKey="submitted" name="ส่งแล้ว" fill="#0284c7" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
   );
 }
+
+const SystemSettingsManager: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      setLoading(true);
+      const status = await DataService.getSystemStatus();
+      setIsOpen(status);
+      setLoading(false);
+    };
+    fetchStatus();
+  }, []);
+
+  const toggleStatus = async () => {
+    const newStatus = !isOpen;
+    setIsSaving(true);
+    try {
+      await DataService.updateSystemStatus(newStatus);
+      setIsOpen(newStatus);
+      Swal.fire({
+        icon: 'success',
+        title: newStatus ? 'เปิดระบบเรียบร้อย' : 'ปิดระบบเรียบร้อย',
+        text: newStatus ? 'นักเรียนสามารถส่งงานได้ตามปกติ' : 'นักเรียนจะไม่สามารถส่งงานใหม่ได้',
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (error) {
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกการตั้งค่าได้', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-md mx-auto py-10">
+      <h3 className="text-2xl font-bold mb-8 text-gray-800 flex items-center gap-2">
+        <UserCog className="text-nbw-600" /> ตั้งค่าระบบรับส่งงาน
+      </h3>
+
+      {loading ? (
+        <div className="text-center py-10">
+          <Loader2 className="animate-spin h-8 w-8 text-nbw-500 mx-auto" />
+        </div>
+      ) : (
+        <div className="bg-gray-50 p-8 rounded-3xl border-2 border-nbw-50 shadow-inner">
+          <div className="flex flex-col items-center text-center space-y-6">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-all duration-500 ${isOpen ? 'bg-green-100 text-green-600 scale-110' : 'bg-red-100 text-red-600'}`}>
+              {isOpen ? <RefreshCw size={48} className="animate-spin-slow" /> : <X size={48} />}
+            </div>
+
+            <div>
+              <h4 className={`text-2xl font-black mb-2 ${isOpen ? 'text-green-600' : 'text-red-600'}`}>
+                {isOpen ? 'ระบบกำลังเปิดรับงาน' : 'ระบบปิดรับงานแล้ว'}
+              </h4>
+              <p className="text-gray-500 text-sm">
+                {isOpen 
+                  ? 'นักเรียนทุกคนสามารถลงทะเบียนและส่งงานได้ตามปกติ' 
+                  : 'นักเรียนจะไม่สามารถกดปุ่มส่งงานหรือลงทะเบียนใหม่ได้'}
+              </p>
+            </div>
+
+            <button
+              onClick={toggleStatus}
+              disabled={isSaving}
+              className={`w-full py-4 rounded-2xl font-black text-lg shadow-xl transform active:scale-95 transition-all flex items-center justify-center gap-3 ${
+                isOpen 
+                  ? 'bg-red-500 hover:bg-red-600 text-white shadow-red-100' 
+                  : 'bg-green-500 hover:bg-green-600 text-white shadow-green-100'
+              }`}
+            >
+              {isSaving ? <Loader2 className="animate-spin" /> : (isOpen ? <X size={24} /> : <CheckSquare size={24} />)}
+              {isOpen ? 'ปิดระบบรับงานเดี๋ยวนี้' : 'เปิดระบบรับงานเดี๋ยวนี้'}
+            </button>
+          </div>
+        </div>
+      )}
+      
+      <div className="mt-8 p-4 bg-blue-50 rounded-xl border border-blue-100 flex gap-3">
+        <Bell className="text-blue-500 flex-shrink-0" size={20} />
+        <p className="text-xs text-blue-700 leading-relaxed">
+          <b>คำแนะนำ:</b> เมื่อปิดระบบ ปุ่ม "ส่งงาน" ในหน้าของนักเรียนจะถูกปิดการใช้งาน และจะมีข้อความแจ้งเตือนว่าระบบปิดรับงานแล้ว
+        </p>
+      </div>
+    </div>
+  );
+};
