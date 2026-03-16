@@ -114,21 +114,21 @@ const ScoreSummary: React.FC = () => {
         </select>
       </div>
       {loading ? ( <div className="text-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div></div> ) : (
-        <div className="overflow-x-auto border rounded-xl">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-100">
+        <div className="overflow-x-auto border rounded-xl max-h-[70vh] overflow-y-auto">
+          <table className="w-full text-sm text-left text-gray-500 border-separate border-spacing-0">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-4 py-4 w-16 text-center border-b">เลขที่</th>
-                <th className="px-4 py-4 w-48 border-b">ชื่อ-สกุล</th>
+                <th className="px-4 py-4 w-16 text-center border-b bg-gray-100">เลขที่</th>
+                <th className="px-4 py-4 w-48 border-b bg-gray-100">ชื่อ-สกุล</th>
                 {assignments.map(a => (
-                  <th key={a.id} className="px-2 py-2 text-center border-l border-b min-w-[120px]">
+                  <th key={a.id} className="px-2 py-2 text-center border-l border-b min-w-[120px] bg-gray-100">
                     <div className="flex flex-col items-center">
-                      <span className="truncate w-full font-bold">{a.title}</span>
+                      <span className="truncate w-full font-bold">งานชิ้นที่ {a.order}</span>
                       <button onClick={() => copyColumnScores(a.id, a.title)} className="mt-1 bg-white border px-2 py-0.5 rounded text-xs hover:bg-green-50">Copy</button>
                     </div>
                   </th>
                 ))}
-                <th className="px-4 py-4 w-24 text-center border-l border-b font-bold">รวม</th>
+                <th className="px-4 py-4 w-24 text-center border-l border-b font-bold bg-gray-100">รวม</th>
               </tr>
             </thead>
             <tbody>
@@ -136,17 +136,17 @@ const ScoreSummary: React.FC = () => {
                 let total = 0;
                 return (
                   <tr key={std.id} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 text-center">{std.number}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{std.name}</td>
+                    <td className="px-4 py-3 text-center border-b">{std.number}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900 border-b">{std.name}</td>
                     {assignments.map(assign => {
                       const sub = submissions.find(s => 
                         normalizeStudentId(s.studentId) === normalizeStudentId(std.studentId) && 
                         String(s.assignmentId).trim() === String(assign.id).trim()
                       );
                       if (typeof sub?.score === 'number') total += sub.score;
-                      return <td key={assign.id} className="px-2 py-3 text-center border-l">{sub?.score ?? '-'}</td>;
+                      return <td key={assign.id} className="px-2 py-3 text-center border-l border-b">{sub?.score ?? '-'}</td>;
                     })}
-                    <td className="px-4 py-3 text-center border-l font-bold text-nbw-600">{total}</td>
+                    <td className="px-4 py-3 text-center border-l border-b font-bold text-nbw-600">{total}</td>
                   </tr>
                 );
               })}
