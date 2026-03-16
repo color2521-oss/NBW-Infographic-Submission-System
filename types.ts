@@ -34,6 +34,11 @@ export interface Announcement {
   isHidden?: boolean; // เพิ่มฟิลด์สำหรับซ่อนประกาศ
 }
 
+export interface SystemSettings {
+  id: string;
+  value: string;
+}
+
 export const ROOMS = Array.from({ length: 13 }, (_, i) => `ม.5/${i + 1}`);
 export const NUMBERS = Array.from({ length: 40 }, (_, i) => i + 1);
 
