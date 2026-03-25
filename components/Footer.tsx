@@ -5,7 +5,7 @@ export const Footer: React.FC = () => {
     <footer className="bg-white border-t border-gray-200 py-8 mt-auto">
       <div className="max-w-7xl mx-auto px-4 text-center">
         <img 
-          src="https://img5.pic.in.th/file/secure-sv1/nw_logo-removebg.png" 
+          src="https://s.imgz.io/2026/03/23/logo_school-removebg692d30e639191ff8.png" 
           alt="Logo" 
           className="w-20 h-20 mx-auto mb-4 hover:scale-110 transition-transform duration-300 drop-shadow-sm" 
         />
