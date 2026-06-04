@@ -22,7 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, setPage, isTeacherM
           {/* Logo Section */}
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => setPage('home')}>
             <div className="w-12 h-12 relative overflow-hidden">
-               <img src="https://s.imgz.io/2026/03/23/logo_school-removebg692d30e639191ff8.png" alt="NBW Logo" className="object-contain w-full h-full drop-shadow-sm" />
+               <img src="https://img2.pic.in.th/logo-removebg37392944064a59c2.png" alt="NBW Logo" className="object-contain w-full h-full drop-shadow-sm" />
             </div>
             <div className="hidden md:block">
               <h1 className="text-lg font-bold text-nbw-900 leading-tight">โรงเรียนหนองบัวแดงวิทยา</h1>
